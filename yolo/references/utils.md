@@ -1,93 +1,138 @@
-# Yolo - Utils
+# YOLO 工具函数参考文档
 
-**Pages:** 20
+**页面数:** 20
+
+本文档详细介绍 Ultralytics YOLO 系列中的各种工具函数和实用类，包括异常处理、超参数调优、文件操作、进度显示等核心工具模块。所有代码示例均已更新为 YOLO11 版本。
 
 ---
 
-## Reference for hub_sdk/helpers/exceptions.py - Ultralytics YOLO Docs
+## 目录
 
-**URL:** https://docs.ultralytics.com/zh/hub/sdk/reference/helpers/exceptions/
+1. [异常处理工具 (hub_sdk/helpers/exceptions.py)](#1-异常处理工具)
+2. [超参数调优工具 (ultralytics/utils/tuner.py)](#2-超参数调优工具)
+3. [文件操作工具 (ultralytics/utils/files.py)](#3-文件操作工具)
+4. [进度条工具 (ultralytics/utils/tqdm.py)](#4-进度条工具)
+5. [绘图工具 (ultralytics/utils/plotting.py)](#5-绘图工具)
+6. [检查工具 (ultralytics/utils/checks.py)](#6-检查工具)
+7. [指标工具 (ultralytics/utils/metrics.py)](#7-指标工具)
+8. [最佳实践](#8-最佳实践)
 
-**Contents:**
-- Reference for hub_sdk/helpers/exceptions.py
-- function hub_sdk.helpers.exceptions.suppress_exceptions
+---
 
-This page is sourced from https://github.com/ultralytics/hub-sdk/blob/main/hub_sdk/helpers/exceptions.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
+## 1. 异常处理工具
 
-Suppress exceptions locally based on the global HUB_EXCEPTIONS flag.
+### 模块概述
+`hub_sdk/helpers/exceptions.py` 提供了全局异常处理机制，允许根据配置标志控制异常的传播或抑制。
 
-If the HUB_EXCEPTIONS flag is set to False, this function raises the caught exception, allowing it to propagate and be handled elsewhere. If the flag is set to True, the function suppresses the exception, effectively handling it locally.
+### 核心函数
 
-This function is designed to be used in conjunction with the global HUB_EXCEPTIONS constant to control exception handling behavior across multiple parts of the codebase.
+#### `suppress_exceptions()`
 
-**Examples:**
+根据全局 `HUB_EXCEPTIONS` 标志在本地抑制异常。
 
-Example 1 (python):
+**函数签名:**
 ```python
 def suppress_exceptions() -> None
 ```
 
-Example 2 (markdown):
-```markdown
-# Set the HUB_EXCEPTIONS constant to control exception handling globally
->>> HUB_EXCEPTIONS = False
+**功能说明:**
+- 如果 `HUB_EXCEPTIONS` 设置为 `False`，函数会重新抛出捕获的异常
+- 如果设置为 `True`，函数会抑制异常，在本地处理
+- 设计用于与全局 `HUB_EXCEPTIONS` 常量配合使用
 
->>> try:
-...     # Your code that may raise an exception
-...     pass
-... except ValueError as e:
-...     # The exception will be suppressed if HUB_EXCEPTIONS is True
-...     suppress_exceptions()
-...     # Exception handling continues here if HUB_EXCEPTIONS is False
-```
+**参数说明:**
 
-Example 3 (python):
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| 无 | - | - | 该函数不接受参数，依赖全局配置 |
+
+**返回值:**
+- 无返回值
+
+**使用示例:**
+
 ```python
-def suppress_exceptions() -> None:
-    """Suppress exceptions locally based on the global HUB_EXCEPTIONS flag.
+# 示例 1: 基本使用
+from hub_sdk.helpers.exceptions import suppress_exceptions, HUB_EXCEPTIONS
 
-    If the HUB_EXCEPTIONS flag is set to False, this function raises the caught exception, allowing it to propagate and
-    be handled elsewhere. If the flag is set to True, the function suppresses the exception, effectively handling it
-    locally.
+# 设置全局异常处理标志
+HUB_EXCEPTIONS = False  # 不抑制异常，正常传播
 
-    Examples:
-        # Set the HUB_EXCEPTIONS constant to control exception handling globally
-        >>> HUB_EXCEPTIONS = False
-
-        >>> try:
-        ...     # Your code that may raise an exception
-        ...     pass
-        ... except ValueError as e:
-        ...     # The exception will be suppressed if HUB_EXCEPTIONS is True
-        ...     suppress_exceptions()
-        ...     # Exception handling continues here if HUB_EXCEPTIONS is False
-
-    Notes:
-        This function is designed to be used in conjunction with the global HUB_EXCEPTIONS constant
-        to control exception handling behavior across multiple parts of the codebase.
-    """
-    if not HUB_EXCEPTIONS:
-        raise
+try:
+    # 可能抛出异常的代码
+    result = risky_operation()
+except ValueError as e:
+    # 根据 HUB_EXCEPTIONS 标志决定是否抑制异常
+    suppress_exceptions()
+    # 如果 HUB_EXCEPTIONS 为 False，异常会继续传播
+    # 如果为 True，异常被抑制，继续执行后续代码
 ```
+
+```python
+# 示例 2: 在 YOLO11 训练中的使用
+from ultralytics import YOLO
+from hub_sdk.helpers.exceptions import suppress_exceptions, HUB_EXCEPTIONS
+
+def safe_predict(model, image_path):
+    """安全的预测函数，处理可能的异常"""
+    try:
+        results = model(image_path)
+        return results
+    except Exception as e:
+        print(f"预测时发生错误: {e}")
+        suppress_exceptions()  # 根据配置决定是否抑制
+        return None
+
+# 使用 YOLO11 模型
+model = YOLO("yolo11n.pt")
+results = safe_predict(model, "test_image.jpg")
+```
+
+```python
+# 示例 3: 批量处理中的异常处理
+from ultralytics import YOLO
+from hub_sdk.helpers.exceptions import suppress_exceptions, HUB_EXCEPTIONS
+
+HUB_EXCEPTIONS = True  # 启用异常抑制
+
+def batch_process_images(model, image_paths):
+    """批量处理图像，单个失败不影响整体"""
+    results = []
+    for img_path in image_paths:
+        try:
+            result = model(img_path)
+            results.append(result)
+        except Exception as e:
+            print(f"处理 {img_path} 失败: {e}")
+            suppress_exceptions()  # 抑制异常，继续处理下一张
+    return results
+
+# 使用示例
+model = YOLO("yolo11x.pt")
+image_list = ["img1.jpg", "img2.jpg", "img3.jpg"]
+all_results = batch_process_images(model, image_list)
+```
+
+**应用场景:**
+- 批量数据处理时的容错处理
+- 分布式训练中的异常管理
+- 生产环境中的稳定性控制
 
 ---
 
-## Reference for ultralytics/utils/tuner.py - Ultralytics YOLO Docs
+## 2. 超参数调优工具
 
-**URL:** https://docs.ultralytics.com/zh/reference/utils/tuner/
+### 模块概述
+`ultralytics/utils/tuner.py` 提供了基于 Ray Tune 的超参数自动调优功能，支持 YOLO11 模型的自动超参数搜索。
 
-**Contents:**
-- Reference for ultralytics/utils/tuner.py
-- function ultralytics.utils.tuner.run_ray_tune
+### 核心函数
 
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/tuner.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
+#### `run_ray_tune()`
 
-Run hyperparameter tuning using Ray Tune.
+使用 Ray Tune 进行超参数调优。
 
-**Examples:**
-
-Example 1 (typescript):
-```typescript
+**函数签名:**
+```python
 def run_ray_tune(
     model,
     space: dict | None = None,
@@ -95,453 +140,439 @@ def run_ray_tune(
     gpu_per_trial: int | None = None,
     max_samples: int = 10,
     **train_args,
+) -> ray.tune.ResultGrid
+```
+
+**功能说明:**
+- 自动搜索最优超参数组合
+- 使用 ASHA 调度器进行早停
+- 支持多 GPU 并行调优
+- 集成 Weights & Biases 日志记录
+
+**参数说明:**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `model` | YOLO | 必填 | 要调优的 YOLO 模型 |
+| `space` | dict | None | 超参数搜索空间，None 则使用默认空间 |
+| `grace_period` | int | 10 | ASHA 调度器的宽限期（轮数） |
+| `gpu_per_trial` | int | None | 每个试验分配的 GPU 数量 |
+| `max_samples` | int | 10 | 最大试验次数 |
+| `**train_args` | Any | - | 传递给 train() 方法的额外参数 |
+
+**返回值:**
+- `ray.tune.ResultGrid`: 包含超参数搜索结果的结果网格
+
+**默认搜索空间:**
+
+| 超参数 | 搜索范围 | 说明 |
+|--------|----------|------|
+| `lr0` | 1e-5 ~ 1e-1 | 初始学习率 |
+| `lrf` | 0.01 ~ 1.0 | 最终学习率 (lr0 * lrf) |
+| `momentum` | 0.6 ~ 0.98 | SGD 动量/Adam beta1 |
+| `weight_decay` | 0.0 ~ 0.001 | 优化器权重衰减 |
+| `warmup_epochs` | 0.0 ~ 5.0 | 预热轮数 |
+| `warmup_momentum` | 0.0 ~ 0.95 | 预热初始动量 |
+| `box` | 0.02 ~ 0.2 | 边界框损失增益 |
+| `cls` | 0.2 ~ 4.0 | 分类损失增益 |
+| `hsv_h` | 0.0 ~ 0.1 | HSV 色调增强 |
+| `hsv_s` | 0.0 ~ 0.9 | HSV 饱和度增强 |
+| `hsv_v` | 0.0 ~ 0.9 | HSV 明度增强 |
+| `degrees` | 0.0 ~ 45.0 | 旋转角度 (±度) |
+| `translate` | 0.0 ~ 0.9 | 平移 (±比例) |
+| `scale` | 0.0 ~ 0.9 | 缩放 (±增益) |
+| `shear` | 0.0 ~ 10.0 | 剪切 (±度) |
+| `perspective` | 0.0 ~ 0.001 | 透视变换 |
+| `flipud` | 0.0 ~ 1.0 | 上下翻转概率 |
+| `fliplr` | 0.0 ~ 1.0 | 左右翻转概率 |
+| `mosaic` | 0.0 ~ 1.0 | 马赛克增强概率 |
+| `mixup` | 0.0 ~ 1.0 | 混合增强概率 |
+
+**使用示例:**
+
+```python
+# 示例 1: 基本调优 - 使用默认搜索空间
+from ultralytics import YOLO
+
+# 加载 YOLO11 模型
+model = YOLO("yolo11n.pt")
+
+# 在 COCO8 数据集上进行超参数调优
+result_grid = model.tune(
+    data="coco8.yaml",
+    use_ray=True,
+    max_samples=10,
+    grace_period=5
+)
+
+# 获取最佳结果
+best_result = result_grid.get_best_result()
+print(f"最佳准确率: {best_result.metrics['metrics/mAP50-95(B)']}")
+print(f"最佳超参数: {best_result.config}")
+```
+
+```python
+# 示例 2: 自定义搜索空间
+from ultralytics import YOLO
+from ray import tune
+
+model = YOLO("yolo11s.pt")
+
+# 定义自定义搜索空间
+custom_space = {
+    "lr0": tune.uniform(1e-4, 1e-2),  # 专注较小的学习率范围
+    "momentum": tune.uniform(0.9, 0.98),  # 较高的动量
+    "weight_decay": tune.uniform(0.0001, 0.0005),  # 较小的权重衰减
+    "mosaic": tune.uniform(0.5, 1.0),  # 强制使用马赛克
+    "mixup": tune.uniform(0.0, 0.3),  # 适度的混合增强
+}
+
+# 使用自定义空间进行调优
+result_grid = model.tune(
+    data="coco8.yaml",
+    space=custom_space,
+    use_ray=True,
+    max_samples=20,
+    epochs=50,
+    gpu_per_trial=1
 )
 ```
 
-Example 2 (python):
 ```python
->>> from ultralytics import YOLO
->>> model = YOLO("yolo11n.pt")  # Load a YOLO11n model
+# 示例 3: 多 GPU 并行调优
+from ultralytics import YOLO
 
-Start tuning hyperparameters for YOLO11n training on the COCO8 dataset
->>> result_grid = model.tune(data="coco8.yaml", use_ray=True)
+model = YOLO("yolo11m.pt")
+
+# 使用 2 个 GPU 并行调优
+result_grid = model.tune(
+    data="coco8.yaml",
+    use_ray=True,
+    max_samples=30,
+    gpu_per_trial=2,  # 每个试验使用 2 个 GPU
+    grace_period=10,
+    epochs=100
+)
+
+# 分析所有结果
+for result in result_grid:
+    print(f"试验 ID: {result.metrics['trial_id']}")
+    print(f"mAP: {result.metrics['metrics/mAP50-95(B)']}")
+    print(f"配置: {result.config}")
 ```
 
-Example 3 (python):
 ```python
-def run_ray_tune(
-    model,
-    space: dict | None = None,
-    grace_period: int = 10,
-    gpu_per_trial: int | None = None,
-    max_samples: int = 10,
-    **train_args,
-):
-    """Run hyperparameter tuning using Ray Tune.
+# 示例 4: 恢复中断的调优
+from ultralytics import YOLO
 
-    Args:
-        model (YOLO): Model to run the tuner on.
-        space (dict, optional): The hyperparameter search space. If not provided, uses default space.
-        grace_period (int, optional): The grace period in epochs of the ASHA scheduler.
-        gpu_per_trial (int, optional): The number of GPUs to allocate per trial.
-        max_samples (int, optional): The maximum number of trials to run.
-        **train_args (Any): Additional arguments to pass to the `train()` method.
+model = YOLO("yolo11l.pt")
 
-    Returns:
-        (ray.tune.ResultGrid): A ResultGrid containing the results of the hyperparameter search.
+# 首次调优（假设中断了）
+# result_grid = model.tune(data="coco8.yaml", use_ray=True, max_samples=50)
 
-    Examples:
-        >>> from ultralytics import YOLO
-        >>> model = YOLO("yolo11n.pt")  # Load a YOLO11n model
+# 从上次中断处恢复
+result_grid = model.tune(
+    data="coco8.yaml",
+    use_ray=True,
+    max_samples=50,
+    resume=True  # 自动恢复
+)
+```
 
-        Start tuning hyperparameters for YOLO11n training on the COCO8 dataset
-        >>> result_grid = model.tune(data="coco8.yaml", use_ray=True)
-    """
-    LOGGER.info("💡 Learn about RayTune at https://docs.ultralytics.com/integrations/ray-tune")
-    try:
-        checks.check_requirements("ray[tune]")
+**最佳实践:**
 
-        import ray
-        from ray import tune
-        from ray.air import RunConfig
-        from ray.air.integrations.wandb import WandbLoggerCallback
-        from ray.tune.schedulers import ASHAScheduler
-    except ImportError:
-        raise ModuleNotFoundError('Ray Tune required but not found. To install run: pip install "ray[tune]"')
+1. **渐进式调优**: 先在小数据集上快速搜索，再在大数据集上精调
+2. **资源管理**: 根据 GPU 数量调整 `gpu_per_trial`
+3. **早停策略**: 合理设置 `grace_period` 避免过早停止
+4. **搜索空间**: 从默认空间开始，逐步缩小范围
+5. **结果分析**: 保存并分析所有试验结果
 
-    try:
-        import wandb
+**性能优化技巧:**
 
-        assert hasattr(wandb, "__version__")
-    except (ImportError, AssertionError):
-        wandb = False
+```python
+# 高性能调优配置
+model = YOLO("yolo11x.pt")
 
-    checks.check_version(ray.__version__, ">=2.0.0", "ray")
-    default_space = {
-        # 'optimizer': tune.choice(['SGD', 'Adam', 'AdamW', 'NAdam', 'RAdam', 'RMSProp']),
-        "lr0": tune.uniform(1e-5, 1e-1),
-        "lrf": tune.uniform(0.01, 1.0),  # final OneCycleLR learning rate (lr0 * lrf)
-        "momentum": tune.uniform(0.6, 0.98),  # SGD momentum/Adam beta1
-        "weight_decay": tune.uniform(0.0, 0.001),  # optimizer weight decay
-        "warmup_epochs": tune.uniform(0.0, 5.0),  # warmup epochs (fractions ok)
-        "warmup_momentum": tune.uniform(0.0, 0.95),  # warmup initial momentum
-        "box": tune.uniform(0.02, 0.2),  # box loss gain
-        "cls": tune.uniform(0.2, 4.0),  # cls loss gain (scale with pixels)
-        "hsv_h": tune.uniform(0.0, 0.1),  # image HSV-Hue augmentation (fraction)
-        "hsv_s": tune.uniform(0.0, 0.9),  # image HSV-Saturation augmentation (fraction)
-        "hsv_v": tune.uniform(0.0, 0.9),  # image HSV-Value augmentation (fraction)
-        "degrees": tune.uniform(0.0, 45.0),  # image rotation (+/- deg)
-        "translate": tune.uniform(0.0, 0.9),  # image translation (+/- fraction)
-        "scale": tune.uniform(0.0, 0.9),  # image scale (+/- gain)
-        "shear": tune.uniform(0.0, 10.0),  # image shear (+/- deg)
-        "perspective": tune.uniform(0.0, 0.001),  # image perspective (+/- fraction), range 0-0.001
-        "flipud": tune.uniform(0.0, 1.0),  # image flip up-down (probability)
-        "fliplr": tune.uniform(0.0, 1.0),  # image flip left-right (probability)
-        "bgr": tune.uniform(0.0, 1.0),  # swap RGB↔BGR channels (probability)
-        "mosaic": tune.uniform(0.0, 1.0),  # image mosaic (probability)
-        "mixup": tune.uniform(0.0, 1.0),  # image mixup (probability)
-        "cutmix": tune.uniform(0.0, 1.0),  # image cutmix (probability)
-        "copy_paste": tune.uniform(0.0, 1.0),  # segment copy-paste (probability)
-    }
+result_grid = model.tune(
+    data="custom_dataset.yaml",
+    space={
+        "lr0": tune.loguniform(1e-4, 1e-2),  # 对数均匀采样
+        "momentum": tune.uniform(0.9, 0.98),
+        "weight_decay": tune.uniform(0.0001, 0.001),
+        "warmup_epochs": tune.uniform(0.0, 3.0),
+    },
+    use_ray=True,
+    max_samples=50,
+    grace_period=10,
+    gpu_per_trial=1,
+    epochs=100,
+    batch=16,  # 根据GPU内存调整
+    workers=8,  # 数据加载线程数
+    device=0,  # 指定 GPU
+)
+```
 
-    # Put the model in ray store
-    task = model.task
-    model_in_store = ray.put(model)
-    base_name = train_args.get("name", "tune")
+---
 
-    def _tune(config):
-        """Train the YOLO model with the specified hyperparameters and return results."""
-        model_to_train = ray.get(model_in_store)  # get the model from ray store for tuning
-        model_to_train.reset_callbacks()
-        config.update(train_args)
+## 3. 文件操作工具
 
-        # Set trial-specific name for W&B logging
-        try:
-            trial_id = tune.get_trial_id()  # Get current trial ID (e.g., "2c2fc_00000")
-            trial_suffix = trial_id.split("_")[-1] if "_" in trial_id else trial_id
-            config["name"] = f"{base_name}_{trial_suffix}"
-        except Exception:
-            # Not in Ray Tune context or error getting trial ID, use base name
-            config["name"] = base_name
+### 模块概述
+`ultralytics/utils/files.py` 提供了文件和目录操作的实用工具类和函数。
 
-        results = model_to_train.train(**config)
-        return results.results_dict
+### 核心类和函数
 
-    # Get search space
-    if not space and not train_args.get("resume"):
-        space = default_space
-        LOGGER.warning("Search space not provided, using default search space.")
+#### `WorkingDirectory`
 
-    # Get dataset
-    data = train_args.get("data", TASK2DATA[task])
-    space["data"] = data
-    if "data" not in train_args:
-        LOGGER.warning(f'Data not provided, using default "data={data}".')
+临时更改工作目录的上下文管理器和装饰器。
 
-    # Define the trainable function with allocated resources
-    trainable_with_resources = tune.with_resources(_tune, {"cpu": NUM_THREADS, "gpu": gpu_per_trial or 0})
+**类签名:**
+```python
+class WorkingDirectory(contextlib.ContextDecorator)
+```
 
-    # Define the ASHA scheduler for hyperparameter search
-    asha_scheduler = ASHAScheduler(
-        time_attr="epoch",
-        metric=TASK2METRIC[task],
-        mode="max",
-        max_t=train_args.get("epochs") or DEFAULT_CFG_DICT["epochs"] or 100,
-        grace_period=grace_period,
-        reduction_factor=3,
+**功能说明:**
+- 临时切换到指定目录
+- 自动恢复原始工作目录
+- 支持上下文管理器和装饰器两种用法
+
+**使用示例:**
+
+```python
+# 示例 1: 作为上下文管理器使用
+from ultralytics.utils.files import WorkingDirectory
+
+# 临时切换到模型目录
+with WorkingDirectory("/path/to/models"):
+    # 在新目录中执行操作
+    model = YOLO("yolo11n.pt")
+    model.train(data="data.yaml", epochs=10)
+# 自动恢复到原目录
+```
+
+```python
+# 示例 2: 作为装饰器使用
+from ultralytics.utils.files import WorkingDirectory
+from ultralytics import YOLO
+
+@WorkingDirectory("/path/to/experiments")
+def train_experiment():
+    """在指定目录中执行训练实验"""
+    model = YOLO("yolo11s.pt")
+    return model.train(data="coco8.yaml", epochs=50)
+
+# 调用函数，自动在指定目录中执行
+results = train_experiment()
+```
+
+```python
+# 示例 3: YOLO11 训练脚本中的应用
+from ultralytics import YOLO
+from ultralytics.utils.files import WorkingDirectory
+from pathlib import Path
+
+def train_multiple_models():
+    """在不同目录中训练多个模型"""
+    models = ["yolo11n.pt", "yolo11s.pt", "yolo11m.pt"]
+
+    for model_name in models:
+        # 为每个模型创建独立的工作目录
+        exp_dir = Path(f"experiments/{model_name.replace('.pt', '')}")
+        exp_dir.mkdir(parents=True, exist_ok=True)
+
+        with WorkingDirectory(exp_dir):
+            print(f"在 {exp_dir} 中训练 {model_name}")
+            model = YOLO(model_name)
+            model.train(
+                data="coco8.yaml",
+                epochs=100,
+                project="runs/train",
+                name=model_name.replace(".pt", "")
+            )
+```
+
+#### `spaces_in_path()`
+
+处理包含空格的路径的上下文管理器。
+
+**函数签名:**
+```python
+@contextmanager
+def spaces_in_path(path: Path | str)
+```
+
+**功能说明:**
+- 自动处理路径中的空格
+- 临时替换空格为下划线
+- 操作完成后恢复原始路径
+
+**使用示例:**
+
+```python
+# 示例 1: 处理包含空格的目录
+from ultralytics.utils.files import spaces_in_path
+from ultralytics import YOLO
+
+# 路径包含空格
+problematic_path = "/path/with spaces/to/data"
+
+with spaces_in_path(problematic_path):
+    model = YOLO("yolo11n.pt")
+    model.train(data=problematic_path + "/dataset.yaml", epochs=10)
+```
+
+#### `increment_path()`
+
+递增文件或目录路径，避免覆盖。
+
+**函数签名:**
+```python
+def increment_path(
+    path: Path | str,
+    sep: str = "",
+    mkdir: bool = False,
+    exist_ok: bool = False
+) -> Path
+```
+
+**参数说明:**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `path` | Path/str | 必填 | 要递增的路径 |
+| `sep` | str | "" | 分隔符 |
+| `mkdir` | bool | False | 是否创建目录 |
+| `exist_ok` | bool | False | 是否允许已存在 |
+
+**使用示例:**
+
+```python
+# 示例 1: 基本使用
+from ultralytics.utils.files import increment_path
+
+# 如果 runs/exp 已存在，自动创建 runs/exp2, runs/exp3 等
+path = increment_path("runs/exp")
+print(path)  # Path('runs/exp2') 或 Path('runs/exp')
+
+# 使用分隔符
+path = increment_path("runs/exp", sep="_")
+print(path)  # Path('runs/exp_2')
+```
+
+```python
+# 示例 2: 在 YOLO11 训练中避免覆盖
+from ultralytics import YOLO
+from ultralytics.utils.files import increment_path
+from pathlib import Path
+
+def train_without_overwrite():
+    """训练模型，自动避免覆盖之前的实验"""
+    model = YOLO("yolo11n.pt")
+
+    # 为每个实验创建唯一目录
+    exp_path = increment_path("runs/train/yolo11_exp", mkdir=True)
+
+    results = model.train(
+        data="coco8.yaml",
+        epochs=100,
+        project=exp_path.parent,
+        name=exp_path.name
     )
 
-    # Define the callbacks for the hyperparameter search
-    tuner_callbacks = [WandbLoggerCallback(project="YOLOv8-tune")] if wandb else []
-
-    # Create the Ray Tune hyperparameter search tuner
-    tune_dir = get_save_dir(
-        get_cfg(
-            DEFAULT_CFG,
-            {**train_args, **{"exist_ok": train_args.pop("resume", False)}},  # resume w/ same tune_dir
-        ),
-        name=train_args.pop("name", "tune"),  # runs/{task}/{tune_dir}
-    )  # must be absolute dir
-    tune_dir.mkdir(parents=True, exist_ok=True)
-    if tune.Tuner.can_restore(tune_dir):
-        LOGGER.info(f"{colorstr('Tuner: ')} Resuming tuning run {tune_dir}...")
-        tuner = tune.Tuner.restore(str(tune_dir), trainable=trainable_with_resources, resume_errored=True)
-    else:
-        tuner = tune.Tuner(
-            trainable_with_resources,
-            param_space=space,
-            tune_config=tune.TuneConfig(
-                scheduler=asha_scheduler,
-                num_samples=max_samples,
-                trial_name_creator=lambda trial: f"{trial.trainable_name}_{trial.trial_id}",
-                trial_dirname_creator=lambda trial: f"{trial.trainable_name}_{trial.trial_id}",
-            ),
-            run_config=RunConfig(callbacks=tuner_callbacks, storage_path=tune_dir.parent, name=tune_dir.name),
-        )
-
-    # Run the hyperparameter search
-    tuner.fit()
-
-    # Get the results of the hyperparameter search
-    results = tuner.get_results()
-
-    # Shut down Ray to clean up workers
-    ray.shutdown()
-
     return results
+
+# 多次调用不会覆盖
+train_without_overwrite()
+train_without_overwrite()  # 创建 runs/train/yolo11_exp2
+train_without_overwrite()  # 创建 runs/train/yolo11_exp3
+```
+
+```python
+# 示例 3: 管理多个实验版本
+from ultralytics import YOLO
+from ultralytics.utils.files import increment_path
+import datetime
+
+def train_with_timestamp():
+    """使用时间戳和递增路径管理实验"""
+    model = YOLO("yolo11s.pt")
+
+    # 添加时间戳
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    base_path = f"runs/train/exp_{timestamp}"
+
+    # 递增路径避免同时间戳冲突
+    exp_path = increment_path(base_path, mkdir=True)
+
+    results = model.train(
+        data="coco8.yaml",
+        epochs=100,
+        project=exp_path.parent,
+        name=exp_path.name,
+        verbose=True
+    )
+
+    return results, exp_path
+
+results, path = train_with_timestamp()
+print(f"实验保存在: {path}")
+```
+
+#### 其他实用函数
+
+**`file_age(path)`**: 返回文件自上次修改以来的天数
+**`file_date(path)`**: 返回文件修改日期 (YYYY-M-D 格式)
+**`file_size(path)`**: 返回文件或目录大小 (MB)
+**`get_latest_run(search_dir)`**: 返回最新的 last.pt 文件路径
+
+```python
+# 示例: 文件管理工具集
+from ultralytics.utils.files import file_age, file_date, file_size, get_latest_run
+from pathlib import Path
+
+def analyze_training_runs(runs_dir="runs/train"):
+    """分析训练运行的信息"""
+    runs_path = Path(runs_dir)
+
+    for exp_dir in runs_path.iterdir():
+        if exp_dir.is_dir():
+            print(f"\n实验: {exp_dir.name}")
+
+            # 检查最后的权重文件
+            last_pt = exp_dir / "weights" / "last.pt"
+            if last_pt.exists():
+                age = file_age(last_pt)
+                date = file_date(last_pt)
+                size = file_size(last_pt)
+
+                print(f"  修改日期: {date}")
+                print(f"  文件年龄: {age:.1f} 天")
+                print(f"  文件大小: {size:.2f} MB")
+
+    # 获取最新的训练运行
+    latest = get_latest_run(runs_dir)
+    if latest:
+        print(f"\n最新训练: {latest}")
+
+# 使用示例
+analyze_training_runs()
 ```
 
 ---
 
-## Reference for ultralytics/utils/files.py - Ultralytics YOLO Docs
+## 4. 进度条工具
 
-**URL:** https://docs.ultralytics.com/zh/reference/utils/files/
+### 模块概述
+`ultralytics/utils/tqdm.py` 提供了轻量级、零依赖的进度条工具，专为 Ultralytics 优化。
 
-**Contents:**
-- Reference for ultralytics/utils/files.py
-- class ultralytics.utils.files.WorkingDirectory
-  - method ultralytics.utils.files.WorkingDirectory.__enter__
-  - method ultralytics.utils.files.WorkingDirectory.__exit__
-- function ultralytics.utils.files.spaces_in_path
-- function ultralytics.utils.files.increment_path
-- function ultralytics.utils.files.file_age
-- function ultralytics.utils.files.file_date
-- function ultralytics.utils.files.file_size
-- function ultralytics.utils.files.get_latest_run
+### 核心类
 
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/files.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
+#### `TQDM`
 
-Bases: contextlib.ContextDecorator
+轻量级进度条类，零外部依赖。
 
-A context manager and decorator for temporarily changing the working directory.
-
-This class allows for the temporary change of the working directory using a context manager or decorator. It ensures that the original working directory is restored after the context or decorated function completes.
-
-Change the current working directory to the specified directory upon entering the context.
-
-Restore the original working directory when exiting the context.
-
-Context manager to handle paths with spaces in their names.
-
-If a path contains spaces, it replaces them with underscores, copies the file/directory to the new path, executes the context code block, then copies the file/directory back to its original location.
-
-Increment a file or directory path, i.e., runs/exp --> runs/exp{sep}2, runs/exp{sep}3, ... etc.
-
-If the path exists and exist_ok is not True, the path will be incremented by appending a number and sep to the end of the path. If the path is a file, the file extension will be preserved. If the path is a directory, the number will be appended directly to the end of the path.
-
-Return days since the last modification of the specified file.
-
-Return the file modification date in 'YYYY-M-D' format.
-
-Return the size of a file or directory in megabytes (MB).
-
-Return the path to the most recent 'last.pt' file in the specified directory for resuming training.
-
-Update and re-save specified YOLO models in an 'updated_models' subdirectory.
-
-**Examples:**
-
-Example 1 (unknown):
-```unknown
-WorkingDirectory(self, new_dir: str | Path)
-```
-
-Example 2 (python):
-```python
-Using as a context manager:
->>> with WorkingDirectory("/path/to/new/dir"):
-...     # Perform operations in the new directory
-...     pass
-
-Using as a decorator:
->>> @WorkingDirectory("/path/to/new/dir")
-... def some_function():
-...     # Perform operations in the new directory
-...     pass
-```
-
-Example 3 (python):
-```python
-class WorkingDirectory(contextlib.ContextDecorator):
-    """A context manager and decorator for temporarily changing the working directory.
-
-    This class allows for the temporary change of the working directory using a context manager or decorator. It ensures
-    that the original working directory is restored after the context or decorated function completes.
-
-    Attributes:
-        dir (Path | str): The new directory to switch to.
-        cwd (Path): The original current working directory before the switch.
-
-    Methods:
-        __enter__: Changes the current directory to the specified directory.
-        __exit__: Restores the original working directory on context exit.
-
-    Examples:
-        Using as a context manager:
-        >>> with WorkingDirectory("/path/to/new/dir"):
-        ...     # Perform operations in the new directory
-        ...     pass
-
-        Using as a decorator:
-        >>> @WorkingDirectory("/path/to/new/dir")
-        ... def some_function():
-        ...     # Perform operations in the new directory
-        ...     pass
-    """
-
-    def __init__(self, new_dir: str | Path):
-        """Initialize the WorkingDirectory context manager with the target directory."""
-        self.dir = new_dir  # new dir
-        self.cwd = Path.cwd().resolve()  # current dir
-```
-
-Example 4 (python):
-```python
-def __enter__(self)
-```
-
----
-
-## Reference for ultralytics/utils/tqdm.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/reference/utils/tqdm/
-
-**Contents:**
-- Reference for ultralytics/utils/tqdm.py
-- class ultralytics.utils.tqdm.TQDM
-  - method ultralytics.utils.tqdm.TQDM.__del__
-  - method ultralytics.utils.tqdm.TQDM.__enter__
-  - method ultralytics.utils.tqdm.TQDM.__exit__
-  - method ultralytics.utils.tqdm.TQDM.__iter__
-  - method ultralytics.utils.tqdm.TQDM._display
-  - method ultralytics.utils.tqdm.TQDM._format_num
-  - method ultralytics.utils.tqdm.TQDM._format_rate
-  - method ultralytics.utils.tqdm.TQDM._format_time
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/tqdm.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Lightweight zero-dependency progress bar for Ultralytics.
-
-Provides clean, rich-style progress bars suitable for various environments including Weights & Biases, console outputs, and other logging systems. Features zero external dependencies, clean single-line output, rich-style progress bars with Unicode block characters, context manager support, iterator protocol support, and dynamic description updates.
-
-Destructor to ensure cleanup.
-
-Enter context manager.
-
-Exit context manager and close progress bar.
-
-Iterate over the wrapped iterable with progress updates.
-
-Display progress bar.
-
-Format number with optional unit scaling.
-
-Format rate with units, switching between it/s and s/it for readability.
-
-Format time duration.
-
-Generate progress bar.
-
-Check if display should update.
-
-Set postfix (appends to description).
-
-Update progress by n steps.
-
-Static method to write without breaking progress bar.
-
-Check for known non-interactive console environments.
-
-**Examples:**
-
-Example 1 (python):
-```python
-def __init__(
-    self,
-    iterable: Any = None,
-    desc: str | None = None,
-    total: int | None = None,
-    leave: bool = True,
-    file: IO[str] | None = None,
-    mininterval: float = 0.1,
-    disable: bool | None = None,
-    unit: str = "it",
-    unit_scale: bool = True,
-    unit_divisor: int = 1000,
-    bar_format: str | None = None,  # kept for API compatibility; not used for formatting
-    initial: int = 0,
-    **kwargs,
-) -> None
-```
-
-Example 2 (typescript):
-```typescript
-Basic usage with iterator:
->>> for i in TQDM(range(100)):
-...     time.sleep(0.01)
-
-With custom description:
->>> pbar = TQDM(range(100), desc="Processing")
->>> for i in pbar:
-...     pbar.set_description(f"Processing item {i}")
-
-Context manager usage:
->>> with TQDM(total=100, unit="B", unit_scale=True) as pbar:
-...     for i in range(100):
-...         pbar.update(1)
-
-Manual updates:
->>> pbar = TQDM(total=100, desc="Training")
->>> for epoch in range(100):
-...     # Do work
-...     pbar.update(1)
->>> pbar.close()
-```
-
-Example 3 (python):
+**类签名:**
 ```python
 class TQDM:
-    """Lightweight zero-dependency progress bar for Ultralytics.
-
-    Provides clean, rich-style progress bars suitable for various environments including Weights & Biases, console
-    outputs, and other logging systems. Features zero external dependencies, clean single-line output, rich-style
-    progress bars with Unicode block characters, context manager support, iterator protocol support, and dynamic
-    description updates.
-
-    Attributes:
-        iterable (object): Iterable to wrap with progress bar.
-        desc (str): Prefix description for the progress bar.
-        total (int): Expected number of iterations.
-        disable (bool): Whether to disable the progress bar.
-        unit (str): String for units of iteration.
-        unit_scale (bool): Auto-scale units flag.
-        unit_divisor (int): Divisor for unit scaling.
-        leave (bool): Whether to leave the progress bar after completion.
-        mininterval (float): Minimum time interval between updates.
-        initial (int): Initial counter value.
-        n (int): Current iteration count.
-        closed (bool): Whether the progress bar is closed.
-        bar_format (str): Custom bar format string.
-        file (object): Output file stream.
-
-    Methods:
-        update: Update progress by n steps.
-        set_description: Set or update the description.
-        set_postfix: Set postfix for the progress bar.
-        close: Close the progress bar and clean up.
-        refresh: Refresh the progress bar display.
-        clear: Clear the progress bar from display.
-        write: Write a message without breaking the progress bar.
-
-    Examples:
-        Basic usage with iterator:
-        >>> for i in TQDM(range(100)):
-        ...     time.sleep(0.01)
-
-        With custom description:
-        >>> pbar = TQDM(range(100), desc="Processing")
-        >>> for i in pbar:
-        ...     pbar.set_description(f"Processing item {i}")
-
-        Context manager usage:
-        >>> with TQDM(total=100, unit="B", unit_scale=True) as pbar:
-        ...     for i in range(100):
-        ...         pbar.update(1)
-
-        Manual updates:
-        >>> pbar = TQDM(total=100, desc="Training")
-        >>> for epoch in range(100):
-        ...     # Do work
-        ...     pbar.update(1)
-        >>> pbar.close()
-    """
-
-    # Constants
-    MIN_RATE_CALC_INTERVAL = 0.01  # Minimum time interval for rate calculation
-    RATE_SMOOTHING_FACTOR = 0.3  # Factor for exponential smoothing of rates
-    MAX_SMOOTHED_RATE = 1000000  # Maximum rate to apply smoothing to
-    NONINTERACTIVE_MIN_INTERVAL = 60.0  # Minimum interval for non-interactive environments
-
     def __init__(
         self,
         iterable: Any = None,
@@ -554,1841 +585,991 @@ class TQDM:
         unit: str = "it",
         unit_scale: bool = True,
         unit_divisor: int = 1000,
-        bar_format: str | None = None,  # kept for API compatibility; not used for formatting
+        bar_format: str | None = None,
         initial: int = 0,
         **kwargs,
-    ) -> None:
-        """Initialize the TQDM progress bar with specified configuration options.
-
-        Args:
-            iterable (object, optional): Iterable to wrap with progress bar.
-            desc (str, optional): Prefix description for the progress bar.
-            total (int, optional): Expected number of iterations.
-            leave (bool, optional): Whether to leave the progress bar after completion.
-            file (object, optional): Output file stream for progress display.
-            mininterval (float, optional): Minimum time interval between updates (default 0.1s, 60s in GitHub Actions).
-            disable (bool, optional): Whether to disable the progress bar. Auto-detected if None.
-            unit (str, optional): String for units of iteration (default "it" for items).
-            unit_scale (bool, optional): Auto-scale units for bytes/data units.
-            unit_divisor (int, optional): Divisor for unit scaling (default 1000).
-            bar_format (str, optional): Custom bar format string.
-            initial (int, optional): Initial counter value.
-            **kwargs (Any): Additional keyword arguments for compatibility (ignored).
-        """
-        # Disable if not verbose
-        if disable is None:
-            try:
-                from ultralytics.utils import LOGGER, VERBOSE
-
-                disable = not VERBOSE or LOGGER.getEffectiveLevel() > 20
-            except ImportError:
-                disable = False
-
-        self.iterable = iterable
-        self.desc = desc or ""
-        self.total = total or (len(iterable) if hasattr(iterable, "__len__") else None) or None  # prevent total=0
-        self.disable = disable
-        self.unit = unit
-        self.unit_scale = unit_scale
-        self.unit_divisor = unit_divisor
-        self.leave = leave
-        self.noninteractive = is_noninteractive_console()
-        self.mininterval = max(mininterval, self.NONINTERACTIVE_MIN_INTERVAL) if self.noninteractive else mininterval
-        self.initial = initial
-
-        # Kept for API compatibility (unused for f-string formatting)
-        self.bar_format = bar_format
-
-        self.file = file or sys.stdout
-
-        # Internal state
-        self.n = self.initial
-        self.last_print_n = self.initial
-        self.last_print_t = time.time()
-        self.start_t = time.time()
-        self.last_rate = 0.0
-        self.closed = False
-        self.is_bytes = unit_scale and unit in {"B", "bytes"}
-        self.scales = (
-            [(1073741824, "GB/s"), (1048576, "MB/s"), (1024, "KB/s")]
-            if self.is_bytes
-            else [(1e9, f"G{self.unit}/s"), (1e6, f"M{self.unit}/s"), (1e3, f"K{self.unit}/s")]
-        )
-
-        if not self.disable and self.total and not self.noninteractive:
-            self._display()
-```
-
-Example 4 (python):
-```python
-def __del__(self) -> None
-```
-
----
-
-## Reference for ultralytics/hub/utils.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/reference/hub/utils/
-
-**Contents:**
-- Reference for ultralytics/hub/utils.py
-- function ultralytics.hub.utils.request_with_credentials
-- function ultralytics.hub.utils.requests_with_progress
-- function ultralytics.hub.utils.smart_request
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/hub/utils.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Make an AJAX request with cookies attached in a Google Colab environment.
-
-Make an HTTP request using the specified method and URL, with an optional progress bar.
-
-Make an HTTP request using the 'requests' library, with exponential backoff retries up to a specified timeout.
-
-**Examples:**
-
-Example 1 (python):
-```python
-def request_with_credentials(url: str) -> Any
-```
-
-Example 2 (javascript):
-```javascript
-def request_with_credentials(url: str) -> Any:
-    """Make an AJAX request with cookies attached in a Google Colab environment.
-
-    Args:
-        url (str): The URL to make the request to.
-
-    Returns:
-        (Any): The response data from the AJAX request.
-
-    Raises:
-        OSError: If the function is not run in a Google Colab environment.
-    """
-    if not IS_COLAB:
-        raise OSError("request_with_credentials() must run in a Colab environment")
-    from google.colab import output
-    from IPython import display
-
-    display.display(
-        display.Javascript(
-            f"""
-            window._hub_tmp = new Promise((resolve, reject) => {{
-                const timeout = setTimeout(() => reject("Failed authenticating existing browser session"), 5000)
-                fetch("{url}", {{
-                    method: 'POST',
-                    credentials: 'include'
-                }})
-                    .then((response) => resolve(response.json()))
-                    .then((json) => {{
-                    clearTimeout(timeout);
-                    }}).catch((err) => {{
-                    clearTimeout(timeout);
-                    reject(err);
-                }});
-            }});
-            """
-        )
     )
-    return output.eval_js("_hub_tmp")
 ```
 
-Example 3 (python):
+**参数说明:**
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `iterable` | Any | None | 要包装的可迭代对象 |
+| `desc` | str | None | 进度条前缀描述 |
+| `total` | int | None | 预期的迭代次数 |
+| `leave` | bool | True | 完成后是否保留进度条 |
+| `file` | IO[str] | None | 输出文件对象 |
+| `mininterval` | float | 0.1 | 最小更新间隔（秒） |
+| `disable` | bool | None | 是否禁用进度条 |
+| `unit` | str | "it" | 迭代单位字符串 |
+| `unit_scale` | bool | True | 自动单位缩放 |
+| `unit_divisor` | int | 1000 | 单位缩放除数 |
+| `initial` | int | 0 | 初始进度 |
+
+**使用示例:**
+
 ```python
-def requests_with_progress(method: str, url: str, **kwargs)
+# 示例 1: 基本迭代器使用
+from ultralytics.utils.tqdm import TQDM
+import time
+
+# 简单迭代
+for i in TQDM(range(100)):
+    time.sleep(0.01)
+
+# 带描述的进度条
+for i in TQDM(range(100), desc="处理图像"):
+    time.sleep(0.01)
 ```
 
-Example 4 (python):
 ```python
-def requests_with_progress(method: str, url: str, **kwargs):
-    """Make an HTTP request using the specified method and URL, with an optional progress bar.
+# 示例 2: 上下文管理器使用
+from ultralytics.utils.tqdm import TQDM
+import time
 
-    Args:
-        method (str): The HTTP method to use (e.g. 'GET', 'POST').
-        url (str): The URL to send the request to.
-        **kwargs (Any): Additional keyword arguments to pass to the underlying `requests.request` function.
+# 手动更新进度
+with TQDM(total=100, desc="训练模型", unit="epoch") as pbar:
+    for epoch in range(100):
+        # 执行训练
+        time.sleep(0.1)
 
-    Returns:
-        (requests.Response): The response object from the HTTP request.
+        # 更新进度
+        pbar.update(1)
 
-    Notes:
-        - If 'progress' is set to True, the progress bar will display the download progress for responses with a known
-          content length.
-        - If 'progress' is a number then progress bar will display assuming content length = progress.
-    """
-    import requests  # scoped as slow import
+        # 设置描述
+        pbar.set_description(f"Epoch {epoch}")
 
-    progress = kwargs.pop("progress", False)
-    if not progress:
-        return requests.request(method, url, **kwargs)
-    response = requests.request(method, url, stream=True, **kwargs)
-    total = int(response.headers.get("content-length", 0) if isinstance(progress, bool) else progress)  # total size
+# 进度条会自动关闭
+```
+
+```python
+# 示例 3: 在 YOLO11 训练中的自定义使用
+from ultralytics import YOLO
+from ultralytics.utils.tqdm import TQDM
+
+def custom_training_loop():
+    """自定义训练循环，使用 TQDM 显示进度"""
+    model = YOLO("yolo11n.pt")
+
+    epochs = 100
+    dataset_size = 1000
+
+    # 外层循环：训练轮数
+    with TQDM(total=epochs, desc="训练进度", unit="epoch") as epoch_pbar:
+        for epoch in range(epochs):
+            # 内层循环：批次处理
+            batch_losses = []
+            with TQDM(total=dataset_size, desc=f"Epoch {epoch}", unit="img", leave=False) as batch_pbar:
+                for i in range(dataset_size):
+                    # 模拟批次训练
+                    loss = 0.5 - (epoch / epochs) * 0.3  # 模拟损失下降
+                    batch_losses.append(loss)
+
+                    # 更新批次进度
+                    batch_pbar.update(1)
+                    batch_pbar.set_postfix({"loss": f"{loss:.4f}"})
+
+            # 更新轮数进度
+            avg_loss = sum(batch_losses) / len(batch_losses)
+            epoch_pbar.update(1)
+            epoch_pbar.set_postfix({"avg_loss": f"{avg_loss:.4f}"})
+
+# 执行自定义训练
+custom_training_loop()
+```
+
+```python
+# 示例 4: 批量预测进度显示
+from ultralytics import YOLO
+from ultralytics.utils.tqdm import TQDM
+from pathlib import Path
+
+def batch_predict_with_progress(model_path, image_dir):
+    """批量预测，显示进度条"""
+    model = YOLO(model_path)
+    image_dir = Path(image_dir)
+
+    # 获取所有图像文件
+    image_files = list(image_dir.glob("*.jpg")) + list(image_dir.glob("*.png"))
+
+    # 使用进度条
+    results = []
+    with TQDM(total=len(image_files), desc="预测进度", unit="img") as pbar:
+        for img_path in image_files:
+            # 执行预测
+            result = model(img_path)
+            results.append(result)
+
+            # 更新进度
+            pbar.update(1)
+            pbar.set_description(f"处理: {img_path.name}")
+
+    return results
+
+# 使用示例
+results = batch_predict_with_progress("yolo11n.pt", "test_images")
+```
+
+```python
+# 示例 5: 数据集处理进度
+from ultralytics.utils.tqdm import TQDM
+from pathlib import Path
+import shutil
+
+def process_dataset_with_progress(source_dir, target_dir):
+    """处理数据集，显示复制进度"""
+    source = Path(source_dir)
+    target = Path(target_dir)
+
+    # 获取所有文件
+    files = list(source.rglob("*.*"))
+    files = [f for f in files if f.is_file()]
+
+    # 处理文件
+    with TQDM(total=len(files), desc="处理数据集", unit="file") as pbar:
+        for file in files:
+            # 创建目标路径
+            rel_path = file.relative_to(source)
+            dest_file = target / rel_path
+            dest_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # 复制文件
+            shutil.copy2(file, dest_file)
+
+            # 更新进度
+            pbar.update(1)
+            pbar.set_postfix({"file": file.name})
+
+# 使用示例
+process_dataset_with_progress("raw_data", "processed_data")
+```
+
+**高级特性:**
+
+```python
+# 示例 6: 嵌套进度条
+from ultralytics.utils.tqdm import TQDM
+import time
+
+def nested_progress_example():
+    """嵌套进度条示例"""
+    total_categories = 5
+    items_per_category = 20
+
+    with TQDM(total=total_categories, desc="总体进度", unit="category") as outer_pbar:
+        for category in range(total_categories):
+            # 内层进度条（leave=False 不保留）
+            with TQDM(total=items_per_category, desc=f"类别 {category}", unit="item", leave=False) as inner_pbar:
+                for item in range(items_per_category):
+                    time.sleep(0.01)
+                    inner_pbar.update(1)
+
+            outer_pbar.update(1)
+
+nested_progress_example()
+```
+
+**最佳实践:**
+
+1. **选择合适的描述**: 使用清晰的中文描述
+2. **单位设置**: 选择合适的单位 (it, img, epoch, batch 等)
+3. **嵌套进度**: 内层使用 `leave=False` 避免混乱
+4. **后缀信息**: 使用 `set_postfix()` 显示实时指标
+5. **性能考虑**: 设置合理的 `mininterval` 避免过于频繁更新
+
+---
+
+## 5. 绘图工具
+
+### 模块概述
+`ultralytics/utils/plotting.py` 提供了丰富的可视化工具，用于绘制训练曲线、预测结果、混淆矩阵等。
+
+### 核心功能
+
+#### 主要绘图函数
+
+```python
+# 示例 1: 绘制训练曲线
+from ultralytics.utils.plotting import plot_results
+from pathlib import Path
+
+def plot_training_curves():
+    """绘制训练过程的各项指标曲线"""
+    # 指定 results.csv 文件路径
+    results_file = Path("runs/train/exp/results.csv")
+
+    # 自动绘制所有指标
+    plot_results(results_file)
+
+    # 生成的图像包含:
+    # - 训练/验证损失曲线
+    # - 精确率、召回率曲线
+    # - mAP 曲线
+    # - 学习率变化曲线
+
+plot_training_curves()
+```
+
+```python
+# 示例 2: 绘制预测结果
+from ultralytics import YOLO
+import cv2
+
+def visualize_predictions():
+    """可视化 YOLO11 预测结果"""
+    model = YOLO("yolo11n.pt")
+
+    # 预测并可视化
+    results = model("test_image.jpg", save=True, conf=0.25)
+
+    # 保存的图像包含:
+    # - 检测框
+    # - 类别标签
+    # - 置信度分数
+    # - 不同类别的颜色区分
+
+    # 自定义可视化
+    for r in results:
+        im_array = r.plot()  # 绘制结果为 NumPy 数组
+        cv2.imwrite("result.jpg", im_array)
+
+visualize_predictions()
+```
+
+```python
+# 示例 3: 绘制混淆矩阵
+from ultralytics import YOLO
+
+def plot_confusion_matrix():
+    """生成混淆矩阵"""
+    model = YOLO("yolo11n.pt")
+
+    # 验证模型并生成混淆矩阵
+    results = model.val(
+        data="coco8.yaml",
+        plots=True,  # 生成所有图表
+        save_json=True,  # 保存 JSON 格式结果
+        conf=0.25
+    )
+
+    # 生成的图表包括:
+    # - 混淆矩阵
+    # - 精确率-召回率曲线
+    # - F1 分数曲线
+    # - 各类别的 AP 曲线
+
+plot_confusion_matrix()
+```
+
+```python
+# 示例 4: 标注数据集可视化
+from ultralytics.data.utils import visualize_dataset_images
+from pathlib import Path
+
+def visualize_dataset():
+    """可视化标注数据集"""
+    data_yaml = "coco8.yaml"
+    output_dir = Path("dataset_visualization")
+
+    # 可视化数据集中的图像和标注
+    visualize_dataset_images(
+        data=data_yaml,
+        output_dir=output_dir,
+        max_images=50,  # 最多可视化 50 张图像
+        show_boxes=True,  # 显示边界框
+        show_labels=True,  # 显示标签
+        show_confidence=False  # 不显示置信度（数据集没有）
+    )
+
+visualize_dataset()
+```
+
+### 标签和颜色管理
+
+```python
+# 示例 5: 自定义颜色和标签
+from ultralytics.utils.plotting import colors
+import matplotlib.pyplot as plt
+
+def custom_colors_example():
+    """使用自定义颜色方案"""
+    # YOLO11 预定义颜色
+    class_names = ["person", "car", "dog", "cat"]
+
+    for i, name in enumerate(class_names):
+        color = colors(i)  # 获取类别对应的颜色
+        print(f"{name}: RGB{color}")
+
+        # 使用颜色绘制
+        plt.bar(i, 1, color=tuple(c/255 for c in color), label=name)
+
+    plt.legend()
+    plt.savefig("class_colors.png")
+
+custom_colors_example()
+```
+
+---
+
+## 6. 检查工具
+
+### 模块概述
+`ultralytics/utils/checks.py` 提供了环境检查、依赖验证、文件完整性检查等功能。
+
+### 核心功能
+
+#### 环境检查
+
+```python
+# 示例 1: 检查 Python 版本
+from ultralytics.utils.checks import check_python
+
+def check_environment():
+    """检查 Python 环境"""
+    # 检查 Python 版本（要求 >= 3.8）
+    check_python(min_version="3.8")
+
+check_environment()
+```
+
+```python
+# 示例 2: 检查依赖包
+from ultralytics.utils.checks import check_requirements
+
+def check_dependencies():
+    """检查所需的依赖包"""
+    # 检查核心依赖
+    check_requirements("torch>=1.8.0")
+    check_requirements("torchvision>=0.9.0")
+    check_requirements("numpy>=1.20.0")
+    check_requirements("opencv-python>=4.5.0")
+
+    # 检查可选依赖
     try:
-        pbar = TQDM(total=total, unit="B", unit_scale=True, unit_divisor=1024)
-        for data in response.iter_content(chunk_size=1024):
-            pbar.update(len(data))
-        pbar.close()
-    except requests.exceptions.ChunkedEncodingError:  # avoid 'Connection broken: IncompleteRead' warnings
-        response.close()
-    return response
-```
-
----
-
-## Reference for ultralytics/utils/instance.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/reference/utils/instance/
-
-**Contents:**
-- Reference for ultralytics/utils/instance.py
-- class ultralytics.utils.instance.Bboxes
-  - method ultralytics.utils.instance.Bboxes.__getitem__
-  - method ultralytics.utils.instance.Bboxes.__len__
-  - method ultralytics.utils.instance.Bboxes.add
-  - method ultralytics.utils.instance.Bboxes.areas
-  - method ultralytics.utils.instance.Bboxes.concatenate
-  - method ultralytics.utils.instance.Bboxes.convert
-  - method ultralytics.utils.instance.Bboxes.mul
-- class ultralytics.utils.instance.Instances
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/instance.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-A class for handling bounding boxes in multiple formats.
-
-The class supports various bounding box formats like 'xyxy', 'xywh', and 'ltwh' and provides methods for format conversion, scaling, and area calculation. Bounding box data should be provided as numpy arrays.
-
-This class does not handle normalization or denormalization of bounding boxes.
-
-Retrieve a specific bounding box or a set of bounding boxes using indexing.
-
-When using boolean indexing, make sure to provide a boolean array with the same length as the number of bounding boxes.
-
-Return the number of bounding boxes.
-
-Add offset to bounding box coordinates.
-
-Calculate the area of bounding boxes.
-
-Concatenate a list of Bboxes objects into a single Bboxes object.
-
-The input should be a list or tuple of Bboxes objects.
-
-Convert bounding box format from one type to another.
-
-Multiply bounding box coordinates by scale factor(s).
-
-Container for bounding boxes, segments, and keypoints of detected objects in an image.
-
-This class provides a unified interface for handling different types of object annotations including bounding boxes, segmentation masks, and keypoints. It supports various operations like scaling, normalization, clipping, and format conversion.
-
-Calculate the area of bounding boxes.
-
-Return bounding boxes.
-
-Retrieve a specific instance or a set of instances using indexing.
-
-When using boolean indexing, make sure to provide a boolean array with the same length as the number of instances.
-
-Return the number of instances.
-
-Add padding to coordinates.
-
-Clip coordinates to stay within image boundaries.
-
-Concatenate a list of Instances objects into a single Instances object.
-
-The Instances objects in the list should have the same properties, such as the format of the bounding boxes, whether keypoints are present, and if the coordinates are normalized.
-
-Convert bounding box format.
-
-Convert normalized coordinates to absolute coordinates.
-
-Flip coordinates horizontally.
-
-Flip coordinates vertically.
-
-Convert absolute coordinates to normalized coordinates.
-
-Remove zero-area boxes, i.e. after clipping some boxes may have zero width or height.
-
-Scale coordinates by given factors.
-
-Update instance variables.
-
-Create a function that converts input to n-tuple by repeating singleton values.
-
-**Examples:**
-
-Example 1 (typescript):
-```typescript
-Bboxes(self, bboxes: np.ndarray, format: str = "xyxy") -> None
-```
-
-Example 2 (unknown):
-```unknown
-Create bounding boxes in YOLO format
->>> bboxes = Bboxes(np.array([[100, 50, 150, 100]]), format="xywh")
->>> bboxes.convert("xyxy")
->>> print(bboxes.areas())
-```
-
-Example 3 (python):
-```python
-class Bboxes:
-    """A class for handling bounding boxes in multiple formats.
-
-    The class supports various bounding box formats like 'xyxy', 'xywh', and 'ltwh' and provides methods for format
-    conversion, scaling, and area calculation. Bounding box data should be provided as numpy arrays.
-
-    Attributes:
-        bboxes (np.ndarray): The bounding boxes stored in a 2D numpy array with shape (N, 4).
-        format (str): The format of the bounding boxes ('xyxy', 'xywh', or 'ltwh').
-
-    Methods:
-        convert: Convert bounding box format from one type to another.
-        areas: Calculate the area of bounding boxes.
-        mul: Multiply bounding box coordinates by scale factor(s).
-        add: Add offset to bounding box coordinates.
-        concatenate: Concatenate multiple Bboxes objects.
-
-    Examples:
-        Create bounding boxes in YOLO format
-        >>> bboxes = Bboxes(np.array([[100, 50, 150, 100]]), format="xywh")
-        >>> bboxes.convert("xyxy")
-        >>> print(bboxes.areas())
-
-    Notes:
-        This class does not handle normalization or denormalization of bounding boxes.
-    """
-
-    def __init__(self, bboxes: np.ndarray, format: str = "xyxy") -> None:
-        """Initialize the Bboxes class with bounding box data in a specified format.
-
-        Args:
-            bboxes (np.ndarray): Array of bounding boxes with shape (N, 4) or (4,).
-            format (str): Format of the bounding boxes, one of 'xyxy', 'xywh', or 'ltwh'.
-        """
-        assert format in _formats, f"Invalid bounding box format: {format}, format must be one of {_formats}"
-        bboxes = bboxes[None, :] if bboxes.ndim == 1 else bboxes
-        assert bboxes.ndim == 2
-        assert bboxes.shape[1] == 4
-        self.bboxes = bboxes
-        self.format = format
-```
-
-Example 4 (python):
-```python
-def __getitem__(self, index: int | np.ndarray | slice) -> Bboxes
-```
-
----
-
-## Reference for ultralytics/utils/nms.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/reference/utils/nms/
-
-**Contents:**
-- Reference for ultralytics/utils/nms.py
-- class ultralytics.utils.nms.TorchNMS
-  - method ultralytics.utils.nms.TorchNMS.batched_nms
-  - method ultralytics.utils.nms.TorchNMS.fast_nms
-  - method ultralytics.utils.nms.TorchNMS.nms
-- function ultralytics.utils.nms.non_max_suppression
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/nms.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Ultralytics custom NMS implementation optimized for YOLO.
-
-This class provides static methods for performing non-maximum suppression (NMS) operations on bounding boxes, including both standard NMS and batched NMS for multi-class scenarios.
-
-Batched NMS for class-aware suppression.
-
-Fast-NMS implementation from https://arxiv.org/pdf/1904.02689 using upper triangular matrix operations.
-
-Optimized NMS with early termination that matches torchvision behavior exactly.
-
-Perform non-maximum suppression (NMS) on prediction results.
-
-Applies NMS to filter overlapping bounding boxes based on confidence and IoU thresholds. Supports multiple detection formats including standard boxes, rotated boxes, and masks.
-
-**Examples:**
-
-Example 1 (unknown):
-```unknown
-Perform standard NMS on boxes and scores
->>> boxes = torch.tensor([[0, 0, 10, 10], [5, 5, 15, 15]])
->>> scores = torch.tensor([0.9, 0.8])
->>> keep = TorchNMS.nms(boxes, scores, 0.5)
-```
-
-Example 2 (python):
-```python
-class TorchNMS:
-```
-
-Example 3 (typescript):
-```typescript
-def batched_nms(
-    boxes: torch.Tensor,
-    scores: torch.Tensor,
-    idxs: torch.Tensor,
-    iou_threshold: float,
-    use_fast_nms: bool = False,
-) -> torch.Tensor
-```
-
-Example 4 (unknown):
-```unknown
-Apply batched NMS across multiple classes
->>> boxes = torch.tensor([[0, 0, 10, 10], [5, 5, 15, 15]])
->>> scores = torch.tensor([0.9, 0.8])
->>> idxs = torch.tensor([0, 1])
->>> keep = TorchNMS.batched_nms(boxes, scores, idxs, 0.5)
-```
-
----
-
-## Reference for ultralytics/utils/torch_utils.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/reference/utils/torch_utils/
-
-**Contents:**
-- Reference for ultralytics/utils/torch_utils.py
-- class ultralytics.utils.torch_utils.ModelEMA
-  - method ultralytics.utils.torch_utils.ModelEMA.update
-  - method ultralytics.utils.torch_utils.ModelEMA.update_attr
-- class ultralytics.utils.torch_utils.EarlyStopping
-  - method ultralytics.utils.torch_utils.EarlyStopping.__call__
-- function ultralytics.utils.torch_utils.torch_distributed_zero_first
-- function ultralytics.utils.torch_utils.smart_inference_mode
-- function ultralytics.utils.torch_utils.autocast
-- function ultralytics.utils.torch_utils.get_cpu_info
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/torch_utils.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Updated Exponential Moving Average (EMA) implementation.
-
-Keeps a moving average of everything in the model state_dict (parameters and buffers). For EMA details see References.
-
-To disable EMA set the enabled attribute to False.
-
-Update EMA parameters.
-
-Update attributes and save stripped model with optimizer removed.
-
-Early stopping class that stops training when a specified number of epochs have passed without improvement.
-
-Check whether to stop training.
-
-Ensure all processes in distributed training wait for the local master (rank 0) to complete a task first.
-
-Apply torch.inference_mode() decorator if torch>=1.9.0 else torch.no_grad() decorator.
-
-Get the appropriate autocast context manager based on PyTorch version and AMP setting.
-
-This function returns a context manager for automatic mixed precision (AMP) training that is compatible with both older and newer versions of PyTorch. It handles the differences in the autocast API between PyTorch versions.
-
-Return a string with system CPU information, i.e. 'Apple M2'.
-
-Return a string with system GPU information, i.e. 'Tesla T4, 15102MiB'.
-
-Select the appropriate PyTorch device based on the provided arguments.
-
-The function takes a string specifying the device or a torch.device object and returns a torch.device object representing the selected device. The function also validates the number of available devices and raises an exception if the requested device(s) are not available.
-
-Sets the 'CUDA_VISIBLE_DEVICES' environment variable for specifying which GPUs to use.
-
-Return PyTorch-accurate time.
-
-Fuse Conv2d and BatchNorm2d layers for inference optimization.
-
-Fuse ConvTranspose2d and BatchNorm2d layers for inference optimization.
-
-Print and return detailed model information layer by layer.
-
-Return the total number of parameters in a YOLO model.
-
-Return the total number of parameters with gradients in a YOLO model.
-
-Return model info dict with useful model information.
-
-Calculate FLOPs (floating point operations) for a model in billions.
-
-Attempts two calculation methods: first with a stride-based tensor for efficiency, then falls back to full image size if needed (e.g., for RTDETR models). Returns 0.0 if thop library is unavailable or calculation fails.
-
-Compute model FLOPs using torch profiler (alternative to thop package, but 2-10x slower).
-
-Initialize model weights to random values.
-
-Scale and pad an image tensor, optionally maintaining aspect ratio and padding to gs multiple.
-
-Copy attributes from object 'b' to object 'a', with options to include/exclude certain attributes.
-
-Return a dictionary of intersecting keys with matching shapes, excluding 'exclude' keys, using da values.
-
-Return True if model is of type DP or DDP.
-
-Unwrap compiled and parallel models to get the base model.
-
-Return a lambda function for sinusoidal ramp from y1 to y2 https://arxiv.org/pdf/1812.01187.pdf.
-
-Initialize random number generator (RNG) seeds https://pytorch.org/docs/stable/notes/randomness.html.
-
-Unset all the configurations applied for deterministic training.
-
-Strip optimizer from 'f' to finalize training, optionally save as 's'.
-
-Convert the state_dict of a given optimizer to FP16, focusing on the 'state' key for tensor conversions.
-
-Monitor and manage CUDA memory usage.
-
-This function checks if CUDA is available and, if so, empties the CUDA cache to free up unused memory. It then yields a dictionary containing memory usage information, which can be updated by the caller. Finally, it updates the dictionary with the amount of memory reserved by CUDA on the specified device.
-
-Ultralytics speed, memory and FLOPs profiler.
-
-Compile a model with torch.compile and optionally warm up the graph to reduce first-iteration latency.
-
-This utility attempts to compile the provided model using the inductor backend with dynamic shapes enabled and an autotuning mode. If compilation is unavailable or fails, the original model is returned unchanged. An optional warmup performs a single forward pass on a dummy input to prime the compiled graph and measure compile/warmup time.
-
-**Examples:**
-
-Example 1 (unknown):
-```unknown
-ModelEMA(self, model, decay = 0.9999, tau = 2000, updates = 0)
-```
-
-Example 2 (python):
-```python
-class ModelEMA:
-    """Updated Exponential Moving Average (EMA) implementation.
-
-    Keeps a moving average of everything in the model state_dict (parameters and buffers). For EMA details see
-    References.
-
-    To disable EMA set the `enabled` attribute to `False`.
-
-    Attributes:
-        ema (nn.Module): Copy of the model in evaluation mode.
-        updates (int): Number of EMA updates.
-        decay (function): Decay function that determines the EMA weight.
-        enabled (bool): Whether EMA is enabled.
-
-    References:
-        - https://github.com/rwightman/pytorch-image-models
-        - https://www.tensorflow.org/api_docs/python/tf/train/ExponentialMovingAverage
-    """
-
-    def __init__(self, model, decay=0.9999, tau=2000, updates=0):
-        """Initialize EMA for 'model' with given arguments.
-
-        Args:
-            model (nn.Module): Model to create EMA for.
-            decay (float, optional): Maximum EMA decay rate.
-            tau (int, optional): EMA decay time constant.
-            updates (int, optional): Initial number of updates.
-        """
-        self.ema = deepcopy(unwrap_model(model)).eval()  # FP32 EMA
-        self.updates = updates  # number of EMA updates
-        self.decay = lambda x: decay * (1 - math.exp(-x / tau))  # decay exponential ramp (to help early epochs)
-        for p in self.ema.parameters():
-            p.requires_grad_(False)
-        self.enabled = True
-```
-
-Example 3 (python):
-```python
-def update(self, model)
-```
-
-Example 4 (python):
-```python
-def update(self, model):
-    """Update EMA parameters.
-
-    Args:
-        model (nn.Module): Model to update EMA from.
-    """
-    if self.enabled:
-        self.updates += 1
-        d = self.decay(self.updates)
-
-        msd = unwrap_model(model).state_dict()  # model state_dict
-        for k, v in self.ema.state_dict().items():
-            if v.dtype.is_floating_point:  # true for FP16 and FP32
-                v *= d
-                v += (1 - d) * msd[k].detach()
-```
-
----
-
-## Reference for hub_sdk/helpers/utils.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/hub/sdk/reference/helpers/utils/
-
-**Contents:**
-- Reference for hub_sdk/helpers/utils.py
-- function hub_sdk.helpers.utils.threaded
-
-This page is sourced from https://github.com/ultralytics/hub-sdk/blob/main/hub_sdk/helpers/utils.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Multi-threads a target function by default and returns the thread or function result.
-
-This decorator provides flexible execution of the target function, either in a separate thread or synchronously. By default, the function runs in a thread, but this can be controlled via the 'threaded=False' keyword argument which is removed from kwargs before calling the function.
-
-**Examples:**
-
-Example 1 (python):
-```python
-def threaded(func)
-```
-
-Example 2 (python):
-```python
->>> @threaded
-... def process_data(data):
-...     return data
->>>
->>> thread = process_data(my_data)  # Runs in background thread
->>> result = process_data(my_data, threaded=False)  # Runs synchronously, returns function result
-```
-
-Example 3 (python):
-```python
-def threaded(func):
-    """Multi-threads a target function by default and returns the thread or function result.
-
-    This decorator provides flexible execution of the target function, either in a separate thread or synchronously. By
-    default, the function runs in a thread, but this can be controlled via the 'threaded=False' keyword argument which
-    is removed from kwargs before calling the function.
-
-    Args:
-        func (callable): The function to be potentially executed in a separate thread.
-
-    Returns:
-        (callable): A wrapper function that either returns a daemon thread or the direct function result.
-
-    Examples:
-        >>> @threaded
-        ... def process_data(data):
-        ...     return data
-        >>>
-        >>> thread = process_data(my_data)  # Runs in background thread
-        >>> result = process_data(my_data, threaded=False)  # Runs synchronously, returns function result
-    """
-
-    def wrapper(*args, **kwargs):
-        """Multi-threads a given function based on 'threaded' kwarg and returns the thread or function result.
-
-        Args:
-            *args: Variable length argument list to pass to the target function.
-            **kwargs: Arbitrary keyword arguments to pass to the target function.
-        Keyword Args:
-            threaded (bool, optional): Whether to run in a thread. Defaults to True.
-
-        Returns:
-            Union[threading.Thread, Any]: Either a started daemon thread or the direct result of the function call,
-                depending on the value of the 'threaded' parameter.
-        """
-        if kwargs.pop("threaded", True):  # run in thread
-            thread = threading.Thread(target=func, args=args, kwargs=kwargs, daemon=True)
-            thread.start()
-            return thread
-        else:
-            return func(*args, **kwargs)
-
-    return wrapper
-```
-
----
-
-## Reference for ultralytics/utils/errors.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/reference/utils/errors/
-
-**Contents:**
-- Reference for ultralytics/utils/errors.py
-- class ultralytics.utils.errors.HUBModelError
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/errors.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Exception raised when a model cannot be found or retrieved from Ultralytics HUB.
-
-This custom exception is used specifically for handling errors related to model fetching in Ultralytics YOLO. The error message is processed to include emojis for better user experience.
-
-This exception is raised when a requested model is not found or cannot be retrieved from Ultralytics HUB. The message is processed to include emojis for better user experience.
-
-**Examples:**
-
-Example 1 (typescript):
-```typescript
-HUBModelError(self, message: str = "Model not found. Please check model URL and try again.")
-```
-
-Example 2 (typescript):
-```typescript
->>> try:
-...     # Code that might fail to find a model
-...     raise HUBModelError("Custom model not found message")
-... except HUBModelError as e:
-...     print(e)  # Displays the emoji-enhanced error message
-```
-
-Example 3 (python):
-```python
-class HUBModelError(Exception):
-    """Exception raised when a model cannot be found or retrieved from Ultralytics HUB.
-
-    This custom exception is used specifically for handling errors related to model fetching in Ultralytics YOLO. The
-    error message is processed to include emojis for better user experience.
-
-    Attributes:
-        message (str): The error message displayed when the exception is raised.
-
-    Methods:
-        __init__: Initialize the HUBModelError with a custom message.
-
-    Examples:
-        >>> try:
-        ...     # Code that might fail to find a model
-        ...     raise HUBModelError("Custom model not found message")
-        ... except HUBModelError as e:
-        ...     print(e)  # Displays the emoji-enhanced error message
-    """
-
-    def __init__(self, message: str = "Model not found. Please check model URL and try again."):
-        """Initialize a HUBModelError exception.
-
-        This exception is raised when a requested model is not found or cannot be retrieved from Ultralytics HUB. The
-        message is processed to include emojis for better user experience.
-
-        Args:
-            message (str, optional): The error message to display when the exception is raised.
-        """
-        super().__init__(emojis(message))
-```
-
----
-
-## Reference for ultralytics/utils/downloads.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/reference/utils/downloads/
-
-**Contents:**
-- Reference for ultralytics/utils/downloads.py
-- function ultralytics.utils.downloads.is_url
-- function ultralytics.utils.downloads.delete_dsstore
-- function ultralytics.utils.downloads.zip_directory
-- function ultralytics.utils.downloads.unzip_file
-- function ultralytics.utils.downloads.check_disk_space
-- function ultralytics.utils.downloads.get_google_drive_file_info
-- function ultralytics.utils.downloads.safe_download
-- function ultralytics.utils.downloads.get_github_assets
-- function ultralytics.utils.downloads.attempt_download_asset
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/downloads.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Validate if the given string is a URL and optionally check if the URL exists online.
-
-Delete all specified system files in a directory.
-
-".DS_Store" files are created by the Apple operating system and contain metadata about folders and files. They are hidden system files and can cause issues when transferring files between different operating systems.
-
-Zip the contents of a directory, excluding specified files.
-
-The resulting zip file is named after the directory and placed alongside it.
-
-Unzip a *.zip file to the specified path, excluding specified files.
-
-If the zipfile does not contain a single top-level directory, the function will create a new directory with the same name as the zipfile (without the extension) to extract its contents. If a path is not provided, the function will use the parent directory of the zipfile as the default path.
-
-Check if there is sufficient disk space to download and store a file.
-
-Retrieve the direct download link and filename for a shareable Google Drive file link.
-
-Download files from a URL with options for retrying, unzipping, and deleting the downloaded file. Enhanced with
-
-robust partial download detection using Content-Length validation.
-
-Retrieve the specified version's tag and assets from a GitHub repository.
-
-If the version is not specified, the function fetches the latest release assets.
-
-Attempt to download a file from GitHub release assets if it is not found locally.
-
-Download files from specified URLs to a given directory.
-
-Supports concurrent downloads if multiple threads are specified.
-
-**Examples:**
-
-Example 1 (typescript):
-```typescript
-def is_url(url: str | Path, check: bool = False) -> bool
-```
-
-Example 2 (unknown):
-```unknown
->>> valid = is_url("https://www.example.com")
->>> valid_and_exists = is_url("https://www.example.com", check=True)
-```
-
-Example 3 (typescript):
-```typescript
-def is_url(url: str | Path, check: bool = False) -> bool:
-    """Validate if the given string is a URL and optionally check if the URL exists online.
-
-    Args:
-        url (str): The string to be validated as a URL.
-        check (bool, optional): If True, performs an additional check to see if the URL exists online.
-
-    Returns:
-        (bool): True for a valid URL. If 'check' is True, also returns True if the URL exists online.
-
-    Examples:
-        >>> valid = is_url("https://www.example.com")
-        >>> valid_and_exists = is_url("https://www.example.com", check=True)
-    """
-    try:
-        url = str(url)
-        result = parse.urlparse(url)
-        if not (result.scheme and result.netloc):
-            return False
-        if check:
-            r = request.urlopen(request.Request(url, method="HEAD"), timeout=3)
-            return 200 <= r.getcode() < 400
-        return True
+        check_requirements("tensorboard", cmd=False)
+        print("TensorBoard 可用")
     except Exception:
-        return False
+        print("TensorBoard 未安装")
+
+check_dependencies()
 ```
 
-Example 4 (python):
 ```python
-def delete_dsstore(path: str | Path, files_to_delete: tuple[str, ...] = (".DS_Store", "__MACOSX")) -> None
+# 示例 3: 检查 YOLO11 模型文件
+from ultralytics.utils.checks import check_yaml, check_file
+from pathlib import Path
+
+def check_model_files():
+    """检查模型和配置文件"""
+    # 检查 YAML 配置文件
+    data_yaml = "coco8.yaml"
+    if check_yaml(data_yaml):
+        print(f"✓ {data_yaml} 配置文件有效")
+
+    # 检查模型权重文件
+    model_path = "yolo11n.pt"
+    if check_file(model_yaml):
+        print(f"✓ {model_path} 文件存在且可访问")
+
+check_model_files()
+```
+
+```python
+# 示例 4: 检查数据集
+from ultralytics.utils.checks import check_dataset
+from pathlib import Path
+
+def validate_dataset():
+    """验证数据集配置"""
+    data_yaml = "custom_dataset.yaml"
+
+    # 检查数据集
+    check_dataset(data_yaml)
+
+    # 验证:
+    # - YAML 文件格式正确
+    # - 训练/验证/测试集路径存在
+    # - 类别数量一致
+    # - 图像和标注文件匹配
+
+validate_dataset()
+```
+
+```python
+# 示例 5: 综合环境检查
+from ultralytics import YOLO
+from ultralytics.utils.checks import checks
+
+def full_environment_check():
+    """执行完整的环境检查"""
+    model = YOLO("yolo11n.pt")
+
+    # 运行所有检查
+    print("执行环境检查...")
+    checks.collect_system_info()
+    checks.check_pip_update_available()
+
+    # 检查 CUDA
+    import torch
+    if torch.cuda.is_available():
+        print(f"✓ CUDA 可用: {torch.cuda.get_device_name(0)}")
+        print(f"  CUDA 版本: {torch.version.cuda}")
+        print(f"  cuDNN 版本: {torch.backends.cudnn.version()}")
+    else:
+        print("✗ CUDA 不可用，将使用 CPU")
+
+full_environment_check()
 ```
 
 ---
 
-## Reference for ultralytics/utils/autodevice.py - Ultralytics YOLO Docs
+## 7. 指标工具
 
-**URL:** https://docs.ultralytics.com/zh/reference/utils/autodevice/
+### 模块概述
+`ultralytics/utils/metrics.py` 提供了用于计算和评估目标检测指标的工具。
 
-**Contents:**
-- Reference for ultralytics/utils/autodevice.py
-- class ultralytics.utils.autodevice.GPUInfo
-  - method ultralytics.utils.autodevice.GPUInfo.__del__
-  - method ultralytics.utils.autodevice.GPUInfo._get_device_stats
-  - method ultralytics.utils.autodevice.GPUInfo.print_status
-  - method ultralytics.utils.autodevice.GPUInfo.refresh_stats
-  - method ultralytics.utils.autodevice.GPUInfo.select_idle_gpu
-  - method ultralytics.utils.autodevice.GPUInfo.shutdown
+### 核心类
 
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/autodevice.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
+#### `Metric` 基类
 
-Manages NVIDIA GPU information via pynvml with robust error handling.
-
-Provides methods to query detailed GPU statistics (utilization, memory, temp, power) and select the most idle GPUs based on configurable criteria. It safely handles the absence or initialization failure of the pynvml library by logging warnings and disabling related features, preventing application crashes.
-
-Includes fallback logic using torch.cuda for basic device counting if NVML is unavailable during GPU selection. Manages NVML initialization and shutdown internally.
-
-Ensure NVML is shut down when the object is garbage collected.
-
-Get stats for a single GPU device.
-
-Print GPU status in a compact table format using current stats.
-
-Refresh the internal gpu_stats list by querying NVML.
-
-Select the most idle GPUs based on utilization and free memory.
-
-Returns fewer than 'count' if not enough qualify or exist. Returns basic CUDA indices if NVML fails. Empty list if no GPUs found.
-
-Shut down NVML if it was initialized.
-
-**Examples:**
-
-Example 1 (unknown):
-```unknown
-GPUInfo(self)
-```
-
-Example 2 (sql):
-```sql
-Initialize GPUInfo and print status
->>> gpu_info = GPUInfo()
->>> gpu_info.print_status()
-
-Select idle GPUs with minimum memory requirements
->>> selected = gpu_info.select_idle_gpu(count=2, min_memory_fraction=0.2)
->>> print(f"Selected GPU indices: {selected}")
-```
-
-Example 3 (python):
 ```python
-class GPUInfo:
-    """Manages NVIDIA GPU information via pynvml with robust error handling.
+# 示例 1: 计算基本指标
+from ultralytics.utils.metrics import Metric
 
-    Provides methods to query detailed GPU statistics (utilization, memory, temp, power) and select the most idle GPUs
-    based on configurable criteria. It safely handles the absence or initialization failure of the pynvml library by
-    logging warnings and disabling related features, preventing application crashes.
+def calculate_metrics_example():
+    """计算基本的检测指标"""
+    # 创建指标对象
+    metric = Metric()
 
-    Includes fallback logic using `torch.cuda` for basic device counting if NVML is unavailable during GPU
-    selection. Manages NVML initialization and shutdown internally.
+    # 添加预测结果
+    predictions = [
+        # [class_id, confidence, x1, y1, x2, y2]
+        [0, 0.95, 100, 100, 200, 200],
+        [1, 0.87, 150, 150, 250, 250],
+    ]
 
-    Attributes:
-        pynvml (module | None): The `pynvml` module if successfully imported and initialized, otherwise `None`.
-        nvml_available (bool): Indicates if `pynvml` is ready for use. True if import and `nvmlInit()` succeeded, False
-            otherwise.
-        gpu_stats (list[dict[str, Any]]): A list of dictionaries, each holding stats for one GPU, populated on
-        initialization and by `refresh_stats()`. Keys include: 'index', 'name', 'utilization' (%), 'memory_used' (MiB),
-            'memory_total' (MiB), 'memory_free' (MiB), 'temperature' (C), 'power_draw' (W), 'power_limit' (W or 'N/A').
-            Empty if NVML is unavailable or queries fail.
+    # 添加真实标注
+    ground_truth = [
+        [0, 100, 100, 200, 200],
+        [1, 150, 150, 250, 250],
+    ]
 
-    Methods:
-        refresh_stats: Refresh the internal gpu_stats list by querying NVML.
-        print_status: Print GPU status in a compact table format using current stats.
-        select_idle_gpu: Select the most idle GPUs based on utilization and free memory.
-        shutdown: Shut down NVML if it was initialized.
+    # 更新指标
+    metric.update(predictions, ground_truth)
 
-    Examples:
-        Initialize GPUInfo and print status
-        >>> gpu_info = GPUInfo()
-        >>> gpu_info.print_status()
+    # 计算最终指标
+    results = metric.compute()
+    print(f"精确率: {results['precision']}")
+    print(f"召回率: {results['recall']}")
+    print(f"F1 分数: {results['f1']}")
 
-        Select idle GPUs with minimum memory requirements
-        >>> selected = gpu_info.select_idle_gpu(count=2, min_memory_fraction=0.2)
-        >>> print(f"Selected GPU indices: {selected}")
-    """
+calculate_metrics_example()
+```
 
-    def __init__(self):
-        """Initialize GPUInfo, attempting to import and initialize pynvml."""
-        self.pynvml: Any | None = None
-        self.nvml_available: bool = False
-        self.gpu_stats: list[dict[str, Any]] = []
+#### `DetectionMetrics` 类
 
+```python
+# 示例 2: YOLO11 检测指标
+from ultralytics.utils.metrics import DetectionMetrics
+
+def compute_detection_metrics():
+    """计算目标检测的完整指标"""
+    # 创建检测指标对象
+    metrics = DetectionMetrics(
+        save_dir="runs/val/exp",
+        plot=True,  # 生成图表
+        names=["person", "car", "dog"],  # 类别名称
+    )
+
+    # 从验证结果计算指标
+    # metrics.process(...)  # 内部使用
+
+    # 获取主要指标
+    print(f"mAP50: {metrics.box.map50}")  # IoU=0.5 时的 mAP
+    print(f"mAP50-95: {metrics.box.map}")  # IoU=0.5:0.95 时的 mAP
+    print(f"精确率: {metrics.box.mp}")  # 平均精确率
+    print(f"召回率: {metrics.box.mr}")  # 平均召回率
+
+compute_detection_metrics()
+```
+
+### 指标说明
+
+| 指标 | 说明 | 计算方式 |
+|------|------|----------|
+| **Precision** | 精确率 | TP / (TP + FP) |
+| **Recall** | 召回率 | TP / (TP + FN) |
+| **F1-Score** | F1 分数 | 2 * (Precision * Recall) / (Precision + Recall) |
+| **mAP50** | IoU=0.5 时的平均精度 | 在 IoU 阈值 0.5 下计算 AP 后取平均 |
+| **mAP50-95** | IoU=0.5:0.95 时的平均精度 | 在 IoU 阈值 0.5 到 0.95 下计算 AP 后取平均 |
+| **AP** | 平均精度 | PR 曲线下的面积 |
+
+```python
+# 示例 3: 自定义指标计算
+import numpy as np
+
+def calculate_ap(precision, recall):
+    """计算平均精度 (AP)"""
+    # 使用 11 点插值
+    ap = 0
+    for t in np.linspace(0, 1, 11):
+        p = np.max(precision[recall >= t]) if np.any(recall >= t) else 0
+        ap += p / 11
+    return ap
+
+# 示例数据
+precision = np.array([1.0, 0.9, 0.8, 0.7, 0.6])
+recall = np.array([0.2, 0.4, 0.6, 0.8, 1.0])
+
+ap = calculate_ap(precision, recall)
+print(f"AP: {ap:.3f}")
+```
+
+---
+
+## 8. 最佳实践
+
+### 8.1 文件管理
+
+```python
+from ultralytics import YOLO
+from ultralytics.utils.files import WorkingDirectory, increment_path
+from pathlib import Path
+import datetime
+
+def organized_training_workflow():
+    """组织良好的训练工作流"""
+    model = YOLO("yolo11n.pt")
+
+    # 创建有组织的目录结构
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    base_exp = f"runs/train/{timestamp}_yolo11n"
+
+    # 自动递增避免覆盖
+    exp_path = increment_path(base_exp, mkdir=True)
+
+    # 在工作目录中训练
+    with WorkingDirectory(exp_path):
+        results = model.train(
+            data="coco8.yaml",
+            epochs=100,
+            project=".",
+            name=".",
+            save_period=10,  # 每 10 轮保存一次
+            exist_ok=True,
+        )
+
+    print(f"训练完成，结果保存在: {exp_path}")
+    return results
+
+organized_training_workflow()
+```
+
+### 8.2 进度显示
+
+```python
+from ultralytics import YOLO
+from ultralytics.utils.tqdm import TQDM
+import cv2
+from pathlib import Path
+
+def batch_inference_with_progress(model_path, image_dir, output_dir):
+    """带进度显示的批量推理"""
+    model = YOLO(model_path)
+    image_dir = Path(image_dir)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 获取所有图像
+    images = list(image_dir.glob("*.jpg")) + list(image_dir.glob("*.png"))
+
+    # 带实时统计的进度条
+    total_detections = 0
+
+    with TQDM(total=len(images), desc="批量推理", unit="img") as pbar:
+        for img_path in images:
+            # 预测
+            results = model(img_path, verbose=False)
+
+            # 统计检测数量
+            num_dets = len(results[0].boxes)
+            total_detections += num_dets
+
+            # 保存结果
+            annotated = results[0].plot()
+            output_path = output_dir / f"pred_{img_path.name}"
+            cv2.imwrite(str(output_path), annotated)
+
+            # 更新进度
+            pbar.update(1)
+            pbar.set_postfix({
+                "检测数": num_dets,
+                "总计": total_detections
+            })
+
+    print(f"\n完成！共检测到 {total_detections} 个对象")
+
+batch_inference_with_progress("yolo11n.pt", "test_images", "results")
+```
+
+### 8.3 异常处理
+
+```python
+from ultralytics import YOLO
+from hub_sdk.helpers.exceptions import suppress_exceptions, HUB_EXCEPTIONS
+
+def robust_prediction_pipeline(model_path, image_paths):
+    """健壮的预测管道"""
+    HUB_EXCEPTIONS = True  # 启用异常抑制
+
+    model = YOLO(model_path)
+    successful = 0
+    failed = 0
+
+    for img_path in image_paths:
         try:
-            check_requirements("nvidia-ml-py>=12.0.0")
-            self.pynvml = __import__("pynvml")
-            self.pynvml.nvmlInit()
-            self.nvml_available = True
-            self.refresh_stats()
+            results = model(img_path, verbose=False)
+
+            # 处理结果
+            if results and len(results) > 0:
+                successful += 1
+            else:
+                print(f"警告: {img_path} 没有检测结果")
+
         except Exception as e:
-            LOGGER.warning(f"Failed to initialize pynvml, GPU stats disabled: {e}")
+            failed += 1
+            print(f"错误: {img_path} 处理失败: {e}")
+            suppress_exceptions()
+
+    print(f"\n统计: 成功 {successful}, 失败 {failed}")
+    return successful, failed
+
+robust_prediction_pipeline("yolo11n.pt", ["img1.jpg", "img2.jpg", "img3.jpg"])
 ```
 
-Example 4 (python):
+### 8.4 性能监控
+
 ```python
-def __del__(self)
+from ultralytics import YOLO
+from ultralytics.utils.tqdm import TQDM
+import time
+import psutil
+import torch
+
+def monitor_training_performance():
+    """监控训练性能"""
+    model = YOLO("yolo11n.pt")
+
+    epochs = 50
+    with TQDM(total=epochs, desc="训练监控", unit="epoch") as pbar:
+        for epoch in range(epochs):
+            start_time = time.time()
+
+            # 模拟训练（实际使用 model.train()）
+            # results = model.train(data="coco8.yaml", epochs=1)
+            time.sleep(0.1)  # 模拟
+
+            # 计算时间
+            epoch_time = time.time() - start_time
+
+            # 获取内存使用
+            memory_mb = psutil.virtual_memory().used / (1024 * 1024)
+
+            # GPU 信息（如果可用）
+            gpu_info = ""
+            if torch.cuda.is_available():
+                gpu_mem = torch.cuda.memory_allocated() / (1024 ** 2)
+                gpu_info = f"GPU:{gpu_mem:.0f}MB"
+
+            # 更新进度条
+            pbar.update(1)
+            pbar.set_postfix({
+                "时间": f"{epoch_time:.1f}s",
+                "内存": f"{memory_mb:.0f}MB",
+                gpu_info: ""
+            })
+
+monitor_training_performance()
+```
+
+### 8.5 完整工作流示例
+
+```python
+from ultralytics import YOLO
+from ultralytics.utils.files import WorkingDirectory, increment_path
+from ultralytics.utils.tqdm import TQDM
+from pathlib import Path
+import shutil
+
+def complete_yolo11_workflow():
+    """完整的 YOLO11 工作流"""
+
+    # ========== 阶段 1: 环境检查 ==========
+    print("=" * 50)
+    print("阶段 1: 环境检查")
+    print("=" * 50)
+
+    from ultralytics.utils.checks import check_requirements
+    try:
+        check_requirements("torch>=1.8.0")
+        check_requirements("opencv-python>=4.5.0")
+        print("✓ 依赖检查通过")
+    except Exception as e:
+        print(f"✗ 依赖检查失败: {e}")
+        return
+
+    # ========== 阶段 2: 数据验证 ==========
+    print("\n阶段 2: 数据验证")
+    print("=" * 50)
+
+    data_yaml = "coco8.yaml"
+    if not Path(data_yaml).exists():
+        print(f"✗ 数据配置文件不存在: {data_yaml}")
+        return
+    print(f"✓ 数据配置: {data_yaml}")
+
+    # ========== 阶段 3: 模型训练 ==========
+    print("\n阶段 3: 模型训练")
+    print("=" * 50)
+
+    model = YOLO("yolo11n.pt")
+
+    # 创建实验目录
+    exp_dir = increment_path("runs/train/complete_exp", mkdir=True)
+    print(f"实验目录: {exp_dir}")
+
+    with WorkingDirectory(exp_dir):
+        # 训练模型
+        results = model.train(
+            data=data_yaml,
+            epochs=50,
+            batch=16,
+            imgsz=640,
+            save_period=10,
+            project=".",
+            name=".",
+            exist_ok=True,
+            verbose=True,
+        )
+
+    print("✓ 训练完成")
+
+    # ========== 阶段 4: 模型验证 ==========
+    print("\n阶段 4: 模型验证")
+    print("=" * 50)
+
+    metrics = model.val(data=data_yaml, plots=True)
+    print(f"✓ mAP50: {metrics.box.map50:.4f}")
+    print(f"✓ mAP50-95: {metrics.box.map:.4f}")
+
+    # ========== 阶段 5: 批量推理 ==========
+    print("\n阶段 5: 批量推理")
+    print("=" * 50)
+
+    test_dir = Path("test_images")
+    if test_dir.exists():
+        test_images = list(test_dir.glob("*.jpg"))
+        output_dir = Path("runs/predict")
+
+        with TQDM(total=len(test_images), desc="推理进度", unit="img") as pbar:
+            for img_path in test_images:
+                results = model(img_path, save=True, project=output_dir, name="exp")
+                pbar.update(1)
+
+        print(f"✓ 推理完成，结果保存在: {output_dir}")
+
+    # ========== 阶段 6: 模型导出 ==========
+    print("\n阶段 6: 模型导出")
+    print("=" * 50)
+
+    export_formats = ["torchscript", "onnx", "coreml"]
+    for fmt in export_formats:
+        try:
+            model.export(format=fmt)
+            print(f"✓ 导出 {fmt} 格式成功")
+        except Exception as e:
+            print(f"✗ 导出 {fmt} 格式失败: {e}")
+
+    print("\n" + "=" * 50)
+    print("工作流完成！")
+    print("=" * 50)
+
+    return model, results
+
+# 执行完整工作流
+if __name__ == "__main__":
+    model, results = complete_yolo11_workflow()
+```
+
+### 8.6 调优建议
+
+```python
+# 超参数调优策略
+from ultralytics import YOLO
+from ray import tune
+
+def hyperparameter_tuning_strategy():
+    """超参数调优策略"""
+    model = YOLO("yolo11n.pt")
+
+    # 阶段 1: 粗搜索（大范围）
+    coarse_space = {
+        "lr0": tune.uniform(1e-5, 1e-1),
+        "momentum": tune.uniform(0.6, 0.98),
+        "weight_decay": tune.uniform(0.0, 0.001),
+    }
+
+    print("阶段 1: 粗搜索")
+    coarse_results = model.tune(
+        data="coco8.yaml",
+        space=coarse_space,
+        max_samples=20,
+        epochs=20,  # 较少轮数快速筛选
+    )
+
+    # 获取最佳参数
+    best_config = coarse_results.get_best_result().config
+
+    # 阶段 2: 细搜索（小范围）
+    fine_space = {
+        "lr0": tune.uniform(
+            best_config["lr0"] * 0.5,
+            best_config["lr0"] * 1.5
+        ),
+        "momentum": tune.uniform(
+            max(0.9, best_config["momentum"] - 0.05),
+            min(0.98, best_config["momentum"] + 0.05)
+        ),
+    }
+
+    print("阶段 2: 细搜索")
+    fine_results = model.tune(
+        data="coco8.yaml",
+        space=fine_space,
+        max_samples=10,
+        epochs=50,  # 更多轮数精调
+    )
+
+    return fine_results
+
+hyperparameter_tuning_strategy()
 ```
 
 ---
 
-## Reference for ultralytics/utils/patches.py - Ultralytics YOLO Docs
+## 9. 常见问题
 
-**URL:** https://docs.ultralytics.com/zh/reference/utils/patches/
+### Q1: 如何处理训练中断？
 
-**Contents:**
-- Reference for ultralytics/utils/patches.py
-- function ultralytics.utils.patches.imread
-- function ultralytics.utils.patches.imwrite
-- function ultralytics.utils.patches.imshow
-- function ultralytics.utils.patches.torch_load
-- function ultralytics.utils.patches.torch_save
-- function ultralytics.utils.patches.arange_patch
-- function ultralytics.utils.patches.onnx_export_patch
-- function ultralytics.utils.patches.override_configs
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/patches.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Read an image from a file with multilanguage filename support.
-
-Write an image to a file with multilanguage filename support.
-
-Display an image in the specified window with multilanguage window name support.
-
-This function is a wrapper around OpenCV's imshow function that displays an image in a named window. It handles multilanguage window names by encoding them properly for OpenCV compatibility.
-
-Load a PyTorch model with updated arguments to avoid warnings.
-
-This function wraps torch.load and adds the 'weights_only' argument for PyTorch 1.13.0+ to prevent warnings.
-
-For PyTorch versions 1.13 and above, this function automatically sets weights_only=False if the argument is not provided, to avoid deprecation warnings.
-
-Save PyTorch objects with retry mechanism for robustness.
-
-This function wraps torch.save with 3 retries and exponential backoff in case of save failures, which can occur due to device flushing delays or antivirus scanning.
-
-Workaround for ONNX torch.arange incompatibility with FP16.
-
-https://github.com/pytorch/pytorch/issues/148041.
-
-Workaround for ONNX export issues in PyTorch 2.9+ with Dynamo enabled.
-
-Context manager to temporarily override configurations in args.
-
-**Examples:**
-
-Example 1 (typescript):
-```typescript
-def imread(filename: str, flags: int = cv2.IMREAD_COLOR) -> np.ndarray | None
-```
-
-Example 2 (unknown):
-```unknown
->>> img = imread("path/to/image.jpg")
->>> img = imread("path/to/image.jpg", cv2.IMREAD_GRAYSCALE)
-```
-
-Example 3 (python):
 ```python
-def imread(filename: str, flags: int = cv2.IMREAD_COLOR) -> np.ndarray | None:
-    """Read an image from a file with multilanguage filename support.
+from ultralytics import YOLO
+from ultralytics.utils.files import get_latest_run
 
-    Args:
-        filename (str): Path to the file to read.
-        flags (int, optional): Flag that can take values of cv2.IMREAD_*. Controls how the image is read.
+def resume_training():
+    """从最近的检查点恢复训练"""
+    # 查找最近的训练
+    last_run = get_latest_run("runs/train")
 
-    Returns:
-        (np.ndarray | None): The read image array, or None if reading fails.
-
-    Examples:
-        >>> img = imread("path/to/image.jpg")
-        >>> img = imread("path/to/image.jpg", cv2.IMREAD_GRAYSCALE)
-    """
-    file_bytes = np.fromfile(filename, np.uint8)
-    if filename.endswith((".tiff", ".tif")):
-        success, frames = cv2.imdecodemulti(file_bytes, cv2.IMREAD_UNCHANGED)
-        if success:
-            # Handle multi-frame TIFFs and color images
-            return frames[0] if len(frames) == 1 and frames[0].ndim == 3 else np.stack(frames, axis=2)
-        return None
+    if last_run:
+        print(f"从 {last_run} 恢复训练")
+        model = YOLO(last_run + "/weights/last.pt")
+        model.train(resume=True)
     else:
-        im = cv2.imdecode(file_bytes, flags)
-        return im[..., None] if im is not None and im.ndim == 2 else im  # Always ensure 3 dimensions
+        print("未找到可恢复的训练，开始新训练")
+        model = YOLO("yolo11n.pt")
+        model.train(data="coco8.yaml")
+
+resume_training()
 ```
 
-Example 4 (python):
+### Q2: 如何清理旧的训练结果？
+
 ```python
-def imwrite(filename: str, img: np.ndarray, params: list[int] | None = None) -> bool
+from ultralytics.utils.files import file_age
+from pathlib import Path
+
+def cleanup_old_runs(runs_dir="runs/train", max_age_days=30):
+    """清理超过指定天数的旧训练结果"""
+    runs_path = Path(runs_dir)
+
+    for exp_dir in runs_path.iterdir():
+        if exp_dir.is_dir():
+            # 检查年龄
+            age = file_age(exp_dir)
+
+            if age > max_age_days:
+                print(f"删除 {age:.0f} 天前的实验: {exp_dir.name}")
+                import shutil
+                shutil.rmtree(exp_dir)
+
+cleanup_old_runs()
+```
+
+### Q3: 如何比较不同模型？
+
+```python
+from ultralytics import YOLO
+from ultralytics.utils.tqdm import TQDM
+
+def compare_models(models, data_yaml):
+    """比较不同模型的性能"""
+    results_dict = {}
+
+    with TQDM(total=len(models), desc="模型比较", unit="model") as pbar:
+        for model_name in models:
+            # 加载模型
+            model = YOLO(model_name)
+
+            # 验证
+            metrics = model.val(data=data_yaml, verbose=False)
+
+            # 保存结果
+            results_dict[model_name] = {
+                "mAP50": metrics.box.map50,
+                "mAP50-95": metrics.box.map,
+                "precision": metrics.box.mp,
+                "recall": metrics.box.mr,
+            }
+
+            # 更新进度
+            pbar.update(1)
+            pbar.set_postfix({"最佳": f"{metrics.box.map:.3f}"})
+
+    # 打印比较结果
+    print("\n模型比较结果:")
+    print("-" * 60)
+    for model_name, metrics in results_dict.items():
+        print(f"{model_name:15} mAP50: {metrics['mAP50']:.3f}  mAP50-95: {metrics['mAP50-95']:.3f}")
+
+compare_models(
+    ["yolo11n.pt", "yolo11s.pt", "yolo11m.pt"],
+    "coco8.yaml"
+)
 ```
 
 ---
 
-## Reference for ultralytics/utils/triton.py - Ultralytics YOLO Docs
+## 10. 总结
 
-**URL:** https://docs.ultralytics.com/zh/reference/utils/triton/
+本文档详细介绍了 Ultralytics YOLO 系列中的核心工具函数，包括：
 
-**Contents:**
-- Reference for ultralytics/utils/triton.py
-- class ultralytics.utils.triton.TritonRemoteModel
-  - method ultralytics.utils.triton.TritonRemoteModel.__call__
+1. **异常处理**: 全局异常控制机制
+2. **超参数调优**: 基于 Ray Tune 的自动调优
+3. **文件操作**: 目录管理、路径处理
+4. **进度显示**: 轻量级进度条工具
+5. **绘图工具**: 结果可视化
+6. **环境检查**: 依赖和配置验证
+7. **指标计算**: 性能评估工具
 
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/triton.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
+通过合理使用这些工具，可以大大提高 YOLO11 开发和训练的效率。
 
-Client for interacting with a remote Triton Inference Server model.
-
-This class provides a convenient interface for sending inference requests to a Triton Inference Server and processing the responses. Supports both HTTP and gRPC communication protocols.
-
-Arguments may be provided individually or parsed from a collective 'url' argument of the form :////
-
-Call the model with the given inputs and return inference results.
-
-**Examples:**
-
-Example 1 (typescript):
-```typescript
-TritonRemoteModel(self, url: str, endpoint: str = "", scheme: str = "")
-```
-
-Example 2 (json):
-```json
-Initialize a Triton client with HTTP
->>> model = TritonRemoteModel(url="localhost:8000", endpoint="yolov8", scheme="http")
-
-Make inference with numpy arrays
->>> outputs = model(np.random.rand(1, 3, 640, 640).astype(np.float32))
-```
-
-Example 3 (python):
-```python
-class TritonRemoteModel:
-    """Client for interacting with a remote Triton Inference Server model.
-
-    This class provides a convenient interface for sending inference requests to a Triton Inference Server and
-    processing the responses. Supports both HTTP and gRPC communication protocols.
-
-    Attributes:
-        endpoint (str): The name of the model on the Triton server.
-        url (str): The URL of the Triton server.
-        triton_client: The Triton client (either HTTP or gRPC).
-        InferInput: The input class for the Triton client.
-        InferRequestedOutput: The output request class for the Triton client.
-        input_formats (list[str]): The data types of the model inputs.
-        np_input_formats (list[type]): The numpy data types of the model inputs.
-        input_names (list[str]): The names of the model inputs.
-        output_names (list[str]): The names of the model outputs.
-        metadata: The metadata associated with the model.
-
-    Methods:
-        __call__: Call the model with the given inputs and return the outputs.
-
-    Examples:
-        Initialize a Triton client with HTTP
-        >>> model = TritonRemoteModel(url="localhost:8000", endpoint="yolov8", scheme="http")
-
-        Make inference with numpy arrays
-        >>> outputs = model(np.random.rand(1, 3, 640, 640).astype(np.float32))
-    """
-
-    def __init__(self, url: str, endpoint: str = "", scheme: str = ""):
-        """Initialize the TritonRemoteModel for interacting with a remote Triton Inference Server.
-
-        Arguments may be provided individually or parsed from a collective 'url' argument of the form
-        <scheme>://<netloc>/<endpoint>/<task_name>
-
-        Args:
-            url (str): The URL of the Triton server.
-            endpoint (str, optional): The name of the model on the Triton server.
-            scheme (str, optional): The communication scheme ('http' or 'grpc').
-        """
-        if not endpoint and not scheme:  # Parse all args from URL string
-            splits = urlsplit(url)
-            endpoint = splits.path.strip("/").split("/", 1)[0]
-            scheme = splits.scheme
-            url = splits.netloc
-
-        self.endpoint = endpoint
-        self.url = url
-
-        # Choose the Triton client based on the communication scheme
-        if scheme == "http":
-            import tritonclient.http as client
-
-            self.triton_client = client.InferenceServerClient(url=self.url, verbose=False, ssl=False)
-            config = self.triton_client.get_model_config(endpoint)
-        else:
-            import tritonclient.grpc as client
-
-            self.triton_client = client.InferenceServerClient(url=self.url, verbose=False, ssl=False)
-            config = self.triton_client.get_model_config(endpoint, as_json=True)["config"]
-
-        # Sort output names alphabetically, i.e. 'output0', 'output1', etc.
-        config["output"] = sorted(config["output"], key=lambda x: x.get("name"))
-
-        # Define model attributes
-        type_map = {"TYPE_FP32": np.float32, "TYPE_FP16": np.float16, "TYPE_UINT8": np.uint8}
-        self.InferRequestedOutput = client.InferRequestedOutput
-        self.InferInput = client.InferInput
-        self.input_formats = [x["data_type"] for x in config["input"]]
-        self.np_input_formats = [type_map[x] for x in self.input_formats]
-        self.input_names = [x["name"] for x in config["input"]]
-        self.output_names = [x["name"] for x in config["output"]]
-        self.metadata = ast.literal_eval(config.get("parameters", {}).get("metadata", {}).get("string_value", "None"))
-```
-
-Example 4 (python):
-```python
-def __call__(self, *inputs: np.ndarray) -> list[np.ndarray]
-```
+**相关资源:**
+- YOLO 官方文档: https://docs.ultralytics.com
+- YOLO GitHub: https://github.com/ultralytics/ultralytics
+- Ray Tune 文档: https://docs.ray.io/en/latest/tune/
 
 ---
 
-## Reference for ultralytics/utils/ops.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/reference/utils/ops/
-
-**Contents:**
-- Reference for ultralytics/utils/ops.py
-- class ultralytics.utils.ops.Profile
-  - method ultralytics.utils.ops.Profile.__enter__
-  - method ultralytics.utils.ops.Profile.__exit__
-  - method ultralytics.utils.ops.Profile.__str__
-  - method ultralytics.utils.ops.Profile.time
-- function ultralytics.utils.ops.segment2box
-- function ultralytics.utils.ops.scale_boxes
-- function ultralytics.utils.ops.make_divisible
-- function ultralytics.utils.ops.clip_boxes
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/ops.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Bases: contextlib.ContextDecorator
-
-Ultralytics Profile class for timing code execution.
-
-Use as a decorator with @Profile() or as a context manager with 'with Profile():'. Provides accurate timing measurements with CUDA synchronization support for GPU operations.
-
-Return a human-readable string representing the accumulated elapsed time.
-
-Get current time with CUDA synchronization if applicable.
-
-Convert segment coordinates to bounding box coordinates.
-
-Converts a single segment label to a box label by finding the minimum and maximum x and y coordinates. Applies inside-image constraint and clips coordinates when necessary.
-
-Rescale bounding boxes from one image shape to another.
-
-Rescales bounding boxes from img1_shape to img0_shape, accounting for padding and aspect ratio changes. Supports both xyxy and xywh box formats.
-
-Return the nearest number that is divisible by the given divisor.
-
-Clip bounding boxes to image boundaries.
-
-Clip line coordinates to image boundaries.
-
-Convert bounding box coordinates from (x1, y1, x2, y2) format to (x, y, width, height) format where (x1, y1) is
-
-the top-left corner and (x2, y2) is the bottom-right corner.
-
-Convert bounding box coordinates from (x, y, width, height) format to (x1, y1, x2, y2) format where (x1, y1) is
-
-the top-left corner and (x2, y2) is the bottom-right corner. Note: ops per 2 channels faster than per channel.
-
-Convert normalized bounding box coordinates to pixel coordinates.
-
-Convert bounding box coordinates from (x1, y1, x2, y2) format to (x, y, width, height, normalized) format. x, y,
-
-width and height are normalized to image dimensions.
-
-Convert bounding box format from [x, y, w, h] to [x1, y1, w, h] where x1, y1 are top-left coordinates.
-
-Convert bounding boxes from [x1, y1, x2, y2] to [x1, y1, w, h] format.
-
-Convert bounding boxes from [x1, y1, w, h] to [x, y, w, h] where xy1=top-left, xy=center.
-
-Convert batched Oriented Bounding Boxes (OBB) from [xy1, xy2, xy3, xy4] to [xywh, rotation] format.
-
-Convert batched Oriented Bounding Boxes (OBB) from [xywh, rotation] to [xy1, xy2, xy3, xy4] format.
-
-Convert bounding box from [x1, y1, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right.
-
-Convert segment labels to box labels, i.e. (cls, xy1, xy2, ...) to (cls, xywh).
-
-Resample segments to n points each using linear interpolation.
-
-Crop masks to bounding box regions.
-
-Apply masks to bounding boxes using mask head output.
-
-Apply masks to bounding boxes using mask head output with native upsampling.
-
-Rescale segment masks to target shape.
-
-Rescale segment coordinates from img1_shape to img0_shape.
-
-Regularize rotated bounding boxes to range [0, pi/2].
-
-Convert masks to segments using contour detection.
-
-Convert a batch of FP32 torch tensors to NumPy uint8 arrays, changing from BCHW to BHWC layout.
-
-Clean a string by replacing special characters with '_' character.
-
-Create empty torch.Tensor or np.ndarray with same shape as input and float32 dtype.
-
-**Examples:**
-
-Example 1 (typescript):
-```typescript
-Profile(self, t: float = 0.0, device: torch.device | None = None)
-```
-
-Example 2 (python):
-```python
-Use as a context manager to time code execution
->>> with Profile(device=device) as dt:
-...     pass  # slow operation here
->>> print(dt)  # prints "Elapsed time is 9.5367431640625e-07 s"
-
-Use as a decorator to time function execution
->>> @Profile()
-... def slow_function():
-...     time.sleep(0.1)
-```
-
-Example 3 (python):
-```python
-class Profile(contextlib.ContextDecorator):
-    """Ultralytics Profile class for timing code execution.
-
-    Use as a decorator with @Profile() or as a context manager with 'with Profile():'. Provides accurate timing
-    measurements with CUDA synchronization support for GPU operations.
-
-    Attributes:
-        t (float): Accumulated time in seconds.
-        device (torch.device): Device used for model inference.
-        cuda (bool): Whether CUDA is being used for timing synchronization.
-
-    Examples:
-        Use as a context manager to time code execution
-        >>> with Profile(device=device) as dt:
-        ...     pass  # slow operation here
-        >>> print(dt)  # prints "Elapsed time is 9.5367431640625e-07 s"
-
-        Use as a decorator to time function execution
-        >>> @Profile()
-        ... def slow_function():
-        ...     time.sleep(0.1)
-    """
-
-    def __init__(self, t: float = 0.0, device: torch.device | None = None):
-        """Initialize the Profile class.
-
-        Args:
-            t (float): Initial accumulated time in seconds.
-            device (torch.device, optional): Device used for model inference to enable CUDA synchronization.
-        """
-        self.t = t
-        self.device = device
-        self.cuda = bool(device and str(device).startswith("cuda"))
-```
-
-Example 4 (python):
-```python
-def __enter__(self)
-```
-
----
-
-## Reference for ultralytics/utils/checks.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/reference/utils/checks/
-
-**Contents:**
-- Reference for ultralytics/utils/checks.py
-- function ultralytics.utils.checks.parse_requirements
-- function ultralytics.utils.checks.parse_version
-- function ultralytics.utils.checks.is_ascii
-- function ultralytics.utils.checks.check_imgsz
-- function ultralytics.utils.checks.check_uv
-- function ultralytics.utils.checks.check_version
-- function ultralytics.utils.checks.check_latest_pypi_version
-- function ultralytics.utils.checks.check_pip_update_available
-- function ultralytics.utils.checks.check_font
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/checks.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Parse a requirements.txt file, ignoring lines that start with '#' and any text after '#'.
-
-Convert a version string to a tuple of integers, ignoring any extra non-numeric string attached to the version.
-
-Check if a string is composed of only ASCII characters.
-
-Verify image size is a multiple of the given stride in each dimension. If the image size is not a multiple of the
-
-stride, update it to the nearest multiple of the stride that is greater than or equal to the given floor value.
-
-Check if uv package manager is installed and can run successfully.
-
-Check current version against the required version or range.
-
-Return the latest version of a PyPI package without downloading or installing it.
-
-Check if a new version of the ultralytics package is available on PyPI.
-
-Find font locally or download to user's configuration directory if it does not already exist.
-
-Check current python version against the required minimum version.
-
-Check if apt packages are installed and install missing ones.
-
-Check if installed dependencies meet Ultralytics YOLO models requirements and attempt to auto-update if needed.
-
-Check the installed versions of PyTorch and Torchvision to ensure they're compatible.
-
-This function checks the installed versions of PyTorch and Torchvision, and warns if they're incompatible according to the compatibility table based on: https://github.com/pytorch/vision#installation.
-
-Check file(s) for acceptable suffix.
-
-Replace legacy YOLOv5 filenames with updated YOLOv5u filenames.
-
-Return a model filename from a valid model stem.
-
-Search/download file (if necessary), check suffix (if provided), and return path.
-
-Search/download YAML file (if necessary) and return path, checking suffix.
-
-Check if the resolved path is under the intended directory to prevent path traversal.
-
-Check if environment supports image displays.
-
-Return a human-readable YOLO software and hardware summary.
-
-Collect and print relevant system information including OS, Python, RAM, CPU, and CUDA.
-
-Check the PyTorch Automatic Mixed Precision (AMP) functionality of a YOLO model.
-
-If the checks fail, it means there are anomalies with AMP on the system that may cause NaN losses or zero-mAP results, so AMP will be disabled during training.
-
-Check if there are multiple Ultralytics installations.
-
-Print function arguments (optional args dict).
-
-Get the number of NVIDIA GPUs available in the environment.
-
-Check if CUDA is available in the environment.
-
-Check if the current environment is running on a Rockchip SoC.
-
-Check if the system has Intel hardware (CPU or GPU).
-
-Check if the sudo command is available in the environment.
-
-**Examples:**
-
-Example 1 (python):
-```python
-def parse_requirements(file_path = ROOT.parent / "requirements.txt", package = "")
-```
-
-Example 2 (sql):
-```sql
->>> from ultralytics.utils.checks import parse_requirements
->>> parse_requirements(package="ultralytics")
-```
-
-Example 3 (go):
-```go
-def parse_requirements(file_path=ROOT.parent / "requirements.txt", package=""):
-    """Parse a requirements.txt file, ignoring lines that start with '#' and any text after '#'.
-
-    Args:
-        file_path (Path): Path to the requirements.txt file.
-        package (str, optional): Python package to use instead of requirements.txt file.
-
-    Returns:
-        requirements (list[SimpleNamespace]): List of parsed requirements as SimpleNamespace objects with `name` and
-            `specifier` attributes.
-
-    Examples:
-        >>> from ultralytics.utils.checks import parse_requirements
-        >>> parse_requirements(package="ultralytics")
-    """
-    if package:
-        requires = [x for x in metadata.distribution(package).requires if "extra == " not in x]
-    else:
-        requires = Path(file_path).read_text().splitlines()
-
-    requirements = []
-    for line in requires:
-        line = line.strip()
-        if line and not line.startswith("#"):
-            line = line.partition("#")[0].strip()  # ignore inline comments
-            if match := re.match(r"([a-zA-Z0-9-_]+)\s*([<>!=~]+.*)?", line):
-                requirements.append(SimpleNamespace(name=match[1], specifier=match[2].strip() if match[2] else ""))
-
-    return requirements
-```
-
-Example 4 (python):
-```python
-def parse_version(version = "0.0.0") -> tuple
-```
-
----
-
-## Reference for ultralytics/utils/git.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/reference/utils/git/
-
-**Contents:**
-- Reference for ultralytics/utils/git.py
-- class ultralytics.utils.git.GitRepo
-  - property ultralytics.utils.git.GitRepo.head
-  - property ultralytics.utils.git.GitRepo.is_repo
-  - property ultralytics.utils.git.GitRepo.branch
-  - property ultralytics.utils.git.GitRepo.commit
-  - property ultralytics.utils.git.GitRepo.origin
-  - method ultralytics.utils.git.GitRepo._find_root
-  - method ultralytics.utils.git.GitRepo._gitdir
-  - method ultralytics.utils.git.GitRepo._read
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/git.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Represent a local Git repository and expose branch, commit, and remote metadata.
-
-This class discovers the repository root by searching for a .git entry from the given path upward, resolves the actual .git directory (including worktrees), and reads Git metadata directly from on-disk files. It does not invoke the git binary and therefore works in restricted environments. All metadata properties are resolved lazily and cached; construct a new instance to refresh state.
-
-True if inside a git repo.
-
-Current branch or None.
-
-Current commit SHA or None.
-
-Return repo root or None.
-
-Resolve actual .git directory (handles worktrees).
-
-Read and strip file if exists.
-
-Commit for ref (handles packed-refs).
-
-**Examples:**
-
-Example 1 (typescript):
-```typescript
-GitRepo(self, path: Path = Path(__file__).resolve())
-```
-
-Example 2 (python):
-```python
-Initialize from the current working directory and read metadata
->>> from pathlib import Path
->>> repo = GitRepo(Path.cwd())
->>> repo.is_repo
-True
->>> repo.branch, repo.commit[:7], repo.origin
-('main', '1a2b3c4', 'https://example.com/owner/repo.git')
-```
-
-Example 3 (python):
-```python
-class GitRepo:
-    """Represent a local Git repository and expose branch, commit, and remote metadata.
-
-    This class discovers the repository root by searching for a .git entry from the given path upward, resolves the
-    actual .git directory (including worktrees), and reads Git metadata directly from on-disk files. It does not invoke
-    the git binary and therefore works in restricted environments. All metadata properties are resolved lazily and
-    cached; construct a new instance to refresh state.
-
-    Attributes:
-        root (Path | None): Repository root directory containing the .git entry; None if not in a repository.
-        gitdir (Path | None): Resolved .git directory path; handles worktrees; None if unresolved.
-        head (str | None): Raw contents of HEAD; a SHA for detached HEAD or "ref: <refname>" for branch heads.
-        is_repo (bool): Whether the provided path resides inside a Git repository.
-        branch (str | None): Current branch name when HEAD points to a branch; None for detached HEAD or non-repo.
-        commit (str | None): Current commit SHA for HEAD; None if not determinable.
-        origin (str | None): URL of the "origin" remote as read from gitdir/config; None if unset or unavailable.
-
-    Examples:
-        Initialize from the current working directory and read metadata
-        >>> from pathlib import Path
-        >>> repo = GitRepo(Path.cwd())
-        >>> repo.is_repo
-        True
-        >>> repo.branch, repo.commit[:7], repo.origin
-        ('main', '1a2b3c4', 'https://example.com/owner/repo.git')
-
-    Notes:
-        - Resolves metadata by reading files: HEAD, packed-refs, and config; no subprocess calls are used.
-        - Caches properties on first access using cached_property; recreate the object to reflect repository changes.
-    """
-
-    def __init__(self, path: Path = Path(__file__).resolve()):
-        """Initialize a Git repository context by discovering the repository root from a starting path.
-
-        Args:
-            path (Path, optional): File or directory path used as the starting point to locate the repository root.
-        """
-        self.root = self._find_root(path)
-        self.gitdir = self._gitdir(self.root) if self.root else None
-```
-
-Example 4 (python):
-```python
-def head(self) -> str | None
-```
-
----
-
-## Reference for ultralytics/utils/logger.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/reference/utils/logger/
-
-**Contents:**
-- Reference for ultralytics/utils/logger.py
-- class ultralytics.utils.logger.ConsoleLogger
-  - method ultralytics.utils.logger.ConsoleLogger._flush_buffer
-  - method ultralytics.utils.logger.ConsoleLogger._flush_worker
-  - method ultralytics.utils.logger.ConsoleLogger._queue_log
-  - method ultralytics.utils.logger.ConsoleLogger._write_destination
-  - method ultralytics.utils.logger.ConsoleLogger.start_capture
-  - method ultralytics.utils.logger.ConsoleLogger.stop_capture
-- class ultralytics.utils.logger.SystemLogger
-  - method ultralytics.utils.logger.SystemLogger._get_nvidia_metrics
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/logger.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Console output capture with batched streaming to file, API, or custom callback.
-
-Captures stdout/stderr output and streams it with intelligent deduplication and configurable batching.
-
-Flush buffered lines to destination and/or callback.
-
-Background worker that flushes buffer periodically.
-
-Queue console text with deduplication and timestamp processing.
-
-Write content to file or API destination.
-
-Start capturing console output and redirect stdout/stderr.
-
-In DDP training, only activates on rank 0/-1 to prevent duplicate logging.
-
-Stop capturing console output and flush remaining buffer.
-
-Log dynamic system metrics for training monitoring.
-
-Captures real-time system metrics including CPU, RAM, disk I/O, network I/O, and NVIDIA GPU statistics for training performance monitoring and analysis.
-
-Get NVIDIA GPU metrics including utilization, memory, temperature, and power.
-
-Initialize NVIDIA GPU monitoring with pynvml.
-
-Get current system metrics including CPU, RAM, disk, network, and GPU usage.
-
-Collects comprehensive system metrics including CPU usage, RAM usage, disk I/O statistics, network I/O statistics, and GPU metrics (if available).
-
-Example output (rates=False, default):
-
-Example output (rates=True):
-
-**Examples:**
-
-Example 1 (rust):
-```rust
-ConsoleLogger(self, destination = None, batch_size = 1, flush_interval = 5.0, on_flush = None)
-```
-
-Example 2 (python):
-```python
-File logging (immediate):
->>> logger = ConsoleLogger("training.log")
->>> logger.start_capture()
->>> print("This will be logged")
->>> logger.stop_capture()
-
-API streaming with batching:
->>> logger = ConsoleLogger("https://api.example.com/logs", batch_size=10)
->>> logger.start_capture()
-
-Custom callback with batching:
->>> def my_handler(content, line_count, chunk_id):
-...     print(f"Received {line_count} lines")
->>> logger = ConsoleLogger(on_flush=my_handler, batch_size=5)
->>> logger.start_capture()
-```
-
-Example 3 (python):
-```python
-class ConsoleLogger:
-    """Console output capture with batched streaming to file, API, or custom callback.
-
-    Captures stdout/stderr output and streams it with intelligent deduplication and configurable batching.
-
-    Attributes:
-        destination (str | Path | None): Target destination for streaming (URL, Path, or None for callback-only).
-        batch_size (int): Number of lines to batch before flushing (default: 1 for immediate).
-        flush_interval (float): Seconds between automatic flushes (default: 5.0).
-        on_flush (callable | None): Optional callback function called with batched content on flush.
-        active (bool): Whether console capture is currently active.
-
-    Examples:
-        File logging (immediate):
-        >>> logger = ConsoleLogger("training.log")
-        >>> logger.start_capture()
-        >>> print("This will be logged")
-        >>> logger.stop_capture()
-
-        API streaming with batching:
-        >>> logger = ConsoleLogger("https://api.example.com/logs", batch_size=10)
-        >>> logger.start_capture()
-
-        Custom callback with batching:
-        >>> def my_handler(content, line_count, chunk_id):
-        ...     print(f"Received {line_count} lines")
-        >>> logger = ConsoleLogger(on_flush=my_handler, batch_size=5)
-        >>> logger.start_capture()
-    """
-
-    def __init__(self, destination=None, batch_size=1, flush_interval=5.0, on_flush=None):
-        """Initialize console logger with optional batching.
-
-        Args:
-            destination (str | Path | None): API endpoint URL (http/https), local file path, or None.
-            batch_size (int): Lines to accumulate before flush (1 = immediate, higher = batched).
-            flush_interval (float): Max seconds between flushes when batching.
-            on_flush (callable | None): Callback(content: str, line_count: int, chunk_id: int) for custom handling.
-        """
-        self.destination = destination
-        self.is_api = isinstance(destination, str) and destination.startswith(("http://", "https://"))
-        if destination is not None and not self.is_api:
-            self.destination = Path(destination)
-
-        # Batching configuration
-        self.batch_size = max(1, batch_size)
-        self.flush_interval = flush_interval
-        self.on_flush = on_flush
-
-        # Console capture state
-        self.original_stdout = sys.stdout
-        self.original_stderr = sys.stderr
-        self.active = False
-        self._log_handler = None  # Track handler for cleanup
-
-        # Buffer for batching
-        self.buffer = []
-        self.buffer_lock = threading.Lock()
-        self.flush_thread = None
-        self.chunk_id = 0
-
-        # Deduplication state
-        self.last_line = ""
-        self.last_time = 0.0
-        self.last_progress_line = ""  # Track progress sequence key for deduplication
-        self.last_was_progress = False  # Track if last line was a progress bar
-```
-
-Example 4 (python):
-```python
-def _flush_buffer(self)
-```
-
----
-
-## Reference for hub_sdk/helpers/error_handler.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/hub/sdk/reference/helpers/error_handler/
-
-**Contents:**
-- Reference for hub_sdk/helpers/error_handler.py
-- class hub_sdk.helpers.error_handler.ErrorHandler
-  - method hub_sdk.helpers.error_handler.ErrorHandler.get_default_message
-  - method hub_sdk.helpers.error_handler.ErrorHandler.handle
-  - method hub_sdk.helpers.error_handler.ErrorHandler.handle_internal_server_error
-  - method hub_sdk.helpers.error_handler.ErrorHandler.handle_not_found
-  - method hub_sdk.helpers.error_handler.ErrorHandler.handle_ratelimit_exceeded
-  - method hub_sdk.helpers.error_handler.ErrorHandler.handle_unauthorized
-  - method hub_sdk.helpers.error_handler.ErrorHandler.handle_unknown_error
-
-This page is sourced from https://github.com/ultralytics/hub-sdk/blob/main/hub_sdk/helpers/error_handler.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Represents an error handler for managing HTTP status codes and error messages.
-
-Get the default error message for a given HTTP status code.
-
-Handle the error based on the provided status code.
-
-Handle an internal server error (HTTP 500).
-
-Handle a resource not found error (HTTP 404).
-
-Handle rate limit exceeded error (HTTP 429).
-
-Handle an unauthorized error (HTTP 401).
-
-Handle an unknown error.
-
-**Examples:**
-
-Example 1 (rust):
-```rust
-ErrorHandler(self, status_code: int, message: str | None = None, headers: dict | None = None)
-```
-
-Example 2 (python):
-```python
-class ErrorHandler:
-    """Represents an error handler for managing HTTP status codes and error messages.
-
-    Attributes:
-        status_code (int): The HTTP status code associated with the error.
-        message (str | None): An optional error message providing additional details.
-        headers (dict | None): An optional dictionary providing response headers details.
-
-    Methods:
-        handle: Handle the error based on the provided status code.
-        handle_unauthorized: Handle an unauthorized error (HTTP 401).
-        handle_ratelimit_exceeded: Handle rate limit exceeded error (HTTP 429).
-        handle_not_found: Handle a resource not found error (HTTP 404).
-        handle_internal_server_error: Handle an internal server error (HTTP 500).
-        handle_unknown_error: Handle an unknown error.
-        get_default_message: Get the default error message for a given HTTP status code.
-    """
-
-    def __init__(
-        self,
-        status_code: int,
-        message: str | None = None,
-        headers: dict | None = None,
-    ):
-        """Initialize the ErrorHandler object with a given status code.
-
-        Args:
-            status_code (int): The HTTP status code representing the error.
-            message (str, optional): An optional error message providing additional details.
-            headers (dict, optional): An optional dictionary providing response headers details.
-        """
-        self.status_code = status_code
-        self.message = message
-        self.headers = headers
-```
-
-Example 3 (python):
-```python
-def get_default_message(self) -> str
-```
-
-Example 4 (python):
-```python
-def get_default_message(self) -> str:
-    """Get the default error message for a given HTTP status code.
-
-    Returns:
-        (str): The default error message associated with the provided status code or unknown error message if not
-            found.
-    """
-    return http.client.responses.get(self.status_code, self.handle_unknown_error())
-```
-
----
-
-## Reference for ultralytics/utils/cpu.py - Ultralytics YOLO Docs
-
-**URL:** https://docs.ultralytics.com/zh/reference/utils/cpu/
-
-**Contents:**
-- Reference for ultralytics/utils/cpu.py
-- class ultralytics.utils.cpu.CPUInfo
-  - method ultralytics.utils.cpu.CPUInfo.__str__
-  - method ultralytics.utils.cpu.CPUInfo._clean
-  - method ultralytics.utils.cpu.CPUInfo.name
-
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/cpu.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
-
-Provide cross-platform CPU brand and model information.
-
-Query platform-specific sources to retrieve a human-readable CPU descriptor and normalize it for consistent presentation across macOS, Linux, and Windows. If platform-specific probing fails, generic platform identifiers are used to ensure a stable string is always returned.
-
-Return the normalized CPU name.
-
-Normalize and prettify a raw CPU descriptor string.
-
-Return a normalized CPU model string from platform-specific sources.
-
-**Examples:**
-
-Example 1 (unknown):
-```unknown
->>> CPUInfo.name()
-'Apple M4 Pro'
->>> str(CPUInfo())
-'Intel Core i7-9750H 2.60GHz'
-```
-
-Example 2 (python):
-```python
-class CPUInfo:
-```
-
-Example 3 (python):
-```python
-def __str__(self) -> str
-```
-
-Example 4 (python):
-```python
-def __str__(self) -> str:
-    """Return the normalized CPU name."""
-    return self.name()
-```
-
----
+**文档版本:** YOLO11 v1.0
+**最后更新:** 2026-01-18

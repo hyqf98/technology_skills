@@ -1,27 +1,27 @@
-# Electron Documentation Index
+# Electron 文档索引
 
-## Categories
+## 类别
 
-### Api
-**File:** `api.md`
-**Pages:** 153
+### API (应用程序接口)
+**文件:** `api.md`
+**页数:** 153
 
-### Development
-**File:** `development.md`
-**Pages:** 22
+### 开发
+**文件:** `development.md`
+**页数:** 22
 
-### Getting Started
-**File:** `getting_started.md`
-**Pages:** 1
+### 快速入门
+**文件:** `getting_started.md`
+**页数:** 1
 
-### Other
-**File:** `other.md`
-**Pages:** 4
+### 其他
+**文件:** `other.md`
+**页数:** 4
 
-### Processes
-**File:** `processes.md`
-**Pages:** 7
+### 进程
+**文件:** `processes.md`
+**页数:** 7
 
-### Tutorial
-**File:** `tutorial.md`
-**Pages:** 73
+### 教程
+**文件:** `tutorial.md`
+**页数:** 73

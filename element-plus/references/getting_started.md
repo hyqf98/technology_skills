@@ -1,18 +1,19 @@
-# Element-Plus - Getting Started
+# Element Plus - 快速入门
 
-**Pages:** 1
+**页面数：** 1
+
+---
+
+## 概述
+
+**URL：** llms-txt#overview
+
+所有组件的概览。
 
 ---
 
-## Overview
-
-**URL:** llms-txt#overview
-
-Overview of all components.
-
----
-Title: Page Header
-URL: https://element-plus.org/en-US/component/page-header
+标题：页面头部（Page Header）
+URL：https://element-plus.org/en-US/component/page-header
 ---
 
 ---

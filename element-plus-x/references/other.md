@@ -1,11 +1,11 @@
-# Element-Plus-X - Other
+# Element-Plus-X - 其他资源
 
-**Pages:** 1
+**页数：** 1
 
 ---
 
-## Element Plus XVue3 生成式AI组件库
+## Element Plus X Vue3 生成式 AI 组件库
 
-**URL:** https://element-plus-x.com/en/
+**URL：** https://element-plus-x.com/en/
 
 ---

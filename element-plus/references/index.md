@@ -1,35 +1,43 @@
-# Element-Plus Documentation Index
+# Element Plus 文档索引
 
-## Categories
+## 分类
 
-### Basic
-**File:** `basic.md`
-**Pages:** 37
+### 基础组件
+**文件：** `basic.md`
+**页面数：** 37
+**说明：** 基础组件包括按钮、布局、图标等常用 UI 元素
 
-### Data
-**File:** `data.md`
-**Pages:** 11
+### 数据展示
+**文件：** `data.md`
+**页面数：** 11
+**说明：** 数据展示组件包括表格、分页、标签等数据呈现相关组件
 
-### Feedback
-**File:** `feedback.md`
-**Pages:** 7
+### 反馈组件
+**文件：** `feedback.md`
+**页面数：** 7
+**说明：** 反馈组件包括对话框、抽屉、消息提示等用户交互反馈组件
 
-### Form
-**File:** `form.md`
-**Pages:** 22
+### 表单组件
+**文件：** `form.md`
+**页面数：** 22
+**说明：** 表单组件包括输入框、选择器、日期选择器等表单相关组件
 
-### Getting Started
-**File:** `getting_started.md`
-**Pages:** 1
+### 快速入门
+**文件：** `getting_started.md`
+**页面数：** 1
+**说明：** 快速入门指南和概述
 
-### Navigation
-**File:** `navigation.md`
-**Pages:** 7
+### 导航组件
+**文件：** `navigation.md`
+**页面数：** 7
+**说明：** 导航组件包括菜单、面包屑、步骤条等导航相关组件
 
-### Other
-**File:** `other.md`
-**Pages:** 37
+### 其他
+**文件：** `other.md`
+**页面数：** 37
+**说明：** 其他组件和工具
 
-### Others
-**File:** `others.md`
-**Pages:** 2
+### 其他
+**文件：** `others.md`
+**页面数：** 2
+**说明：** 辅助组件

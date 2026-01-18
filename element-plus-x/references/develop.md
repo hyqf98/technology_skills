@@ -1,102 +1,106 @@
-#### **I. Clone Repository**
+# 开发指南
+
+#### 一、克隆仓库
 
 ```bash
 git clone https://github.com/HeJiaYue520/Element-Plus-X.git
 cd Element-Plus-X
 ```
 
-#### **II. Install Dependencies**
+#### 二、安装依赖
 
-**Recommended to use PNPM for dependency management**
+**推荐使用 PNPM 进行依赖管理**
 
 ```bash
 pnpm install
 ```
 
-#### **III. Project Structure**
+#### 三、项目结构
 
 ```plaintext
-   ├── apps\docs              # Documentation
-   |     └── components       # Component library documentation
-   └── packages\core          # Core code
+   ├── apps\docs              # 文档
+   |     └── components       # 组件库文档
+   └── packages\core          # 核心代码
          └── src
-            ├── components    # Component source code
-            └── stories       # Component demo examples
+            ├── components    # 组件源代码
+            └── stories       # 组件演示示例
 
 ```
 
-#### **IV. Development Commands**
+#### 四、开发命令
 
-**Please build the components first before previewing**
+**预览前请先构建组件**
 
-| Command         | Description                                    |
-| --------------- | ---------------------------------------------- |
-| `pnpm build`    | Build production version locally               |
-| `pnpm dev:core` | Start component testing with storybook preview |
-| `pnpm dev:docs` | Local documentation preview                    |
+| 命令           | 说明                           |
+| -------------- | ------------------------------- |
+| `pnpm build`   | 本地构建生产版本                |
+| `pnpm dev:core` | 启动组件测试，storybook 预览  |
+| `pnpm dev:docs` | 本地文档预览                   |
 
-#### **V. Become a Contributor**
+#### 五、成为贡献者
 
-> 🥰 Before submitting a PR, we really hope and welcome you to join our discussion group.
+> 🥰 在提交 PR 之前，我们非常希望并欢迎您加入我们的讨论群。
 >
-> 😔 To avoid wasting your precious time. Please first communicate and discuss in the discussion group, get in touch with our team project leader, exchange ideas together, determine the features you want to work on, and clarify the requirements.
+> 😔 为了避免浪费您的宝贵时间，请先在讨论群中沟通讨论，联系我们的项目负责人，交换意见，确定您要开发的功能，明确需求。
 >
-> 💌 After submitting a PR, we can exchange ideas and learn from each other. Pool our wisdom to improve the PR solution and progress together. Looking forward to your participation
+> 💌 提交 PR 后，我们可以交流想法、互相学习。集思广益，完善 PR 方案，共同进步。期待您的参与
 
-1. **Create your own branch**:
+1. **创建自己的分支**：
 
-   Branch management is particularly important. We decided to use the main branch as the production branch, and all our PR submissions will be merged into the dev development branch. After creating a PR, we will first check which PRs are more useful. When we approve your submission, we will create a new branch for you and merge your code into that branch. At the same time, we will pull the code and run local reviews. If there are areas that need improvement, we will provide feedback to you in a timely manner. If our review doesn't pass, we will also provide relevant suggestions. Please feel free to submit your ideas and creativity.
+   分支管理特别重要。我们决定使用 main 分支作为生产分支，所有的 PR 提交都将合并到 dev 开发分支。创建 PR 后，我们会先检查哪些 PR 更有价值。当我们批准您的提交时，我们会为您创建一个新分支并将您的代码合并到该分支。同时，我们会拉取代码并在本地进行审查。如果有需要改进的地方，我们会及时反馈给您。如果我们的审查没有通过，我们也会提供建议。请随意提交您的想法和创意。
 
    ```bash
-   git checkout -b feature/new-component (new-component is your branch name)
+   git checkout -b feature/new-component (new-component 是您的分支名称)
    ```
 
-2. **Code Standards**:
+2. **代码规范**：
 
-   After executing the development commands, please install and open **VS Code's `ESLint` plugin** and use `ESLint.9x` to format code (automatic checking when saving code)
-   - Component naming follows `PascalCase` convention
+   执行开发命令后，请安装并打开 **VS Code 的 `ESLint` 插件**，使用 `ESLint.9x` 格式化代码（保存代码时自动检查）
+   - 组件命名遵循 `PascalCase` 规范
 
-   - Each component includes:
+   - 每个组件包括：
 
    ```plaintext
-   ├── components      # Sub-components involved in the component (optional)
-   ├── index.vue       # Component implementation
-   ├── types.d.ts      # Type definitions
-   └── style.scss      # Style files
+   ├── components      # 组件涉及的子组件（可选）
+   ├── index.vue       # 组件实现
+   ├── types.d.ts      # 类型定义
+   └── style.scss      # 样式文件
    ```
 
-3. **Submit PR**:
-   - Title format: `feat(component): Add new typewriter component`
-   - Description includes: feature description, usage examples, change impact
+3. **提交 PR**：
+   - 标题格式：`feat(component): 新增打字机组件`
+   - 描述包括：功能说明、使用示例、变更影响
 
-4. **Review Process**:
+4. **审查流程**：
 
-   🙋 Reminder again: We will first check which PRs are effective. When we approve your submission, we will create a new branch for you and merge your code into that branch. At the same time, we will pull the code and run local reviews. If there are areas that need improvement, we will provide feedback to you in a timely manner. If our review doesn't pass, we will also provide relevant suggestions. Please feel free to submit your ideas and creativity.
+   🙋 再次提醒：我们会先检查哪些 PR 有效。当我们批准您的提交时，我们会为您创建一个新分支并将您的代码合并到该分支。同时，我们会拉取代码并在本地进行审查。如果有需要改进的地方，我们会及时反馈给您。如果我们的审查没有通过，我们也会提供建议。请随意提交您的想法和创意。
 
-#### **VI. Debug Local Package**
+#### 六、调试本地包
 
-Link local code in the example project:
+在示例项目中链接本地代码：
 
 ```bash
-# Build locally first
+# 先本地构建
 pnpm build
 
-# Execute in example project
+# 在示例项目中执行
 pnpm run dev:core
 ```
 
-#### **VII. Common Issues**
+#### 七、常见问题
 
-1. **Style Conflicts**:
-   - Ensure no duplicate Element-Plus style imports
-   - Use `deep()` selector to override component styles
-2. **Type Errors**:
-   - None at the moment
-3. **Voice Function Issues**:
-   - Check browser permission settings
+1. **样式冲突**：
+   - 确保没有重复的 Element-Plus 样式导入
+   - 使用 `deep()` 选择器覆盖组件样式
 
-4. **Version Issues**:
+2. **类型错误**：
+   - 暂时无
 
-   Vue version too low, please upgrade to Vue 3.3+ or latest version
+3. **语音功能问题**：
+   - 检查浏览器权限设置
 
-   pnpm version too low, please upgrade to 10+ or latest version
+4. **版本问题**：
+
+   Vue 版本过低，请升级到 Vue 3.3+ 或最新版本
+
+   pnpm 版本过低，请升级到 10+ 或最新版本

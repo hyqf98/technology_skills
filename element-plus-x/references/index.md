@@ -1,7 +1,7 @@
-# Element-Plus-X Documentation Index
+# Element-Plus-X 文档索引
 
-## Categories
+## 分类
 
-### Other
-**File:** `other.md`
-**Pages:** 1
+### 其他
+**文件：** `other.md`
+**页数：** 1

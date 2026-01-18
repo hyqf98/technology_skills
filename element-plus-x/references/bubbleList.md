@@ -1,93 +1,93 @@
 ---
-title: BubbleList
+title: 气泡列表组件
 ---
 
 ::: warning
-`Added in version 1.1.6` Inherits the **fog effect** from the typewriter. Added **scroll to bottom button, similar to Doubao🔥**. Added **scrollbar on mouse hover** to enhance interaction experience. Please update and try it out.
+`版本 1.1.6 新增` 继承打字机的**雾化效果**。新增**滚动到底部按钮，类似豆包🔥**。新增**鼠标悬停显示滚动条**以增强交互体验。请更新版本体验。
 
-🐵 This warm tip was last updated: `2025-04-13`
+🐵 此温馨提示最后更新时间：`2025-04-13`
 :::
 
 ::: tip
-Note: The new version's auto-scroll will automatically scroll when the `list` length changes. However, after scrolling up, you need to manually call the `scrollToBottom` method to re-enable auto-scroll. Or, when the scrollbar reaches the bottom, auto-scroll will be triggered again.
+注意：新版自动滚动功能会在 `list` 长度变化时自动滚动。但向上滚动后，需要手动调用 `scrollToBottom` 方法才能重新启用自动滚动。或者，当滚动条到达底部时，会再次触发自动滚动。
 
-The logic is the same as before, so you can upgrade without any worries.
+逻辑与之前保持一致，您可以放心升级。
 :::
 
-## Introduction
+## 简介
 
-`BubbleList` relies on the `Bubble` component and is used to display a list of chat bubbles. This component supports setting the `maximum list height` and has an `auto-scroll` feature. It also provides various `scroll control` methods that users can easily call. It is powerful and requires no mental burden for developers.
+`BubbleList` 依赖于 `Bubble` 组件，用于显示聊天气泡列表。该组件支持设置`最大列表高度`并具有`自动滚动`功能。它还提供了多种`滚动控制`方法，用户可以方便地调用。功能强大且对开发者无心理负担。
 
-## Code Examples
+## 代码示例
 
-### Basic Usage
+### 基础用法
 
 <demo src="./demos/list.vue"></demo>
 
-### Customized List
+### 自定义列表
 
 <demo src="./demos/customized.vue"></demo>
 
-### Auto Scroll & Scroll to Specific Position
+### 自动滚动 & 滚动到指定位置
 
 <demo src="./demos/scroll-to.vue"></demo>
 
-### Back to Top Button
+### 返回顶部按钮
 
 <demo src="./demos/back-button.vue"></demo>
 
-### Scroll Complete Event
+### 滚动完成事件
 
 ::: warning
-This is only needed in very special cases. It is not suitable for streaming output, as it will quickly trigger the typing end event.
+这只在非常特殊的情况下需要。它不适合流式输出，因为它会快速触发打字机结束事件。
 :::
 
 <demo src="./demos/on-complete.vue"></demo>
 
-## Props
+## 属性
 
-| Name                  | Type                                           | <div style="width: 70px">Required</div> | Default                                        | Description                                                                                                                                                                                                                         |
-| --------------------- | ---------------------------------------------- | --------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `list`                | Array                                          | Yes                                     | None                                           | Array containing bubble information. Each element is an object with `content`, `placement`, `loading`, `shape`, `variant`, `isMarkdown`, `typing`, and other `Bubble` properties to configure the display and style of each bubble. |
-| `autoScroll`          | Boolean                                        | No                                      | true                                           | Whether to enable automatic scrolling.                                                                                                                                                                                              |
-| `maxHeight`           | String                                         | No                                      | '-'                                            | Maximum height of the bubble list container.(By default, the height of the wrapper container is inherited)                                                                                                                          |
-| `alwaysShowScrollbar` | Boolean                                        | No                                      | false                                          | Whether to always show the scrollbar. Default is `false`.                                                                                                                                                                           |
-| `backButtonThreshold` | Number                                         | No                                      | 80                                             | Back to bottom button display threshold. When the scrollbar is more than this distance from the bottom, the button will be shown.                                                                                                   |
-| `showBackButton`      | Boolean                                        | No                                      | true                                           | Whether to show the back to bottom button. Default is `true`.                                                                                                                                                                       |
-| `backButtonPosition`  | `{ bottom: '20px', left: 'calc(50% - 19px)' }` | No                                      | `{ bottom: '20px', left: 'calc(50% - 19px)' }` | Position of the back to bottom button. Default is centered at the bottom.                                                                                                                                                           |
-| `btnLoading`          | Boolean                                        | No                                      | true                                           | Whether to enable loading state for the back to bottom button. Default is `true`.                                                                                                                                                   |
-| `btnColor`            | String                                         | No                                      | '#409EFF'                                      | Color of the back to bottom button. Default is `'#409EFF'`.                                                                                                                                                                         |
-| `btnIconSize`         | Number                                         | No                                      | 24                                             | Icon size of the back to bottom button. Default is 24px.                                                                                                                                                                            |
-| `triggerIndices`      | 'only-last' \| 'all' \| number[]               | No                                      | 'only-last'                                    | Index array of bubbles that trigger the `complete` event. Default is `'only-last'`.                                                                                                                                                 |
+| 属性名                | 类型                                           | <div style="width: 70px">是否必填</div> | 默认值                                              | 说明                                                                                                                                                                                                                                   |
+| --------------------- | ---------------------------------------------- | --------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list`                | Array                                          | 是                                      | 无                                                  | 包含气泡信息的数组。每个元素都是一个对象，具有 `content`、`placement`、`loading`、`shape`、`variant`、`isMarkdown`、`typing` 等 `Bubble` 属性，用于配置每个气泡的显示和样式。                                                                |
+| `autoScroll`          | Boolean                                        | 否                                      | true                                                | 是否启用自动滚动                                                                                                                                                                                                                        |
+| `maxHeight`           | String                                         | 否                                      | '-'                                                 | 气泡列表容器的最大高度（默认继承包装容器的高度）                                                                                                                                                                                       |
+| `alwaysShowScrollbar` | Boolean                                        | 否                                      | false                                               | 是否始终显示滚动条，默认为 `false`                                                                                                                                                                                                       |
+| `backButtonThreshold` | Number                                         | 否                                      | 80                                                  | 返回底部按钮显示阈值。当滚动条距离底部超过此距离时，将显示该按钮                                                                                                                                                                         |
+| `showBackButton`      | Boolean                                        | 否                                      | true                                                | 是否显示返回底部按钮，默认为 `true`                                                                                                                                                                                                     |
+| `backButtonPosition`  | `{ bottom: '20px', left: 'calc(50% - 19px)' }` | 否                                      | `{ bottom: '20px', left: 'calc(50% - 19px)' }`      | 返回底部按钮的位置，默认为底部居中                                                                                                                                                                                                       |
+| `btnLoading`          | Boolean                                        | 否                                      | true                                                | 是否为返回底部按钮启用加载状态，默认为 `true`                                                                                                                                                                                           |
+| `btnColor`            | String                                         | 否                                      | '#409EFF'                                           | 返回底部按钮的颜色，默认为 `'#409EFF'`                                                                                                                                                                                                  |
+| `btnIconSize`         | Number                                         | 否                                      | 24                                                  | 返回底部按钮的图标大小，默认为 24px                                                                                                                                                                                                     |
+| `triggerIndices`      | 'only-last' \| 'all' \| number[]               | 否                                      | 'only-last'                                         | 触发 `complete` 事件的气泡索引数组，默认为 `'only-last'`                                                                                                                                                                               |
 
-## Events
+## 事件
 
-| Event Name  | Parameter         | Type     | Description                                                |
-| ----------- | ----------------- | -------- | ---------------------------------------------------------- |
-| `@complete` | (instance, index) | Function | Triggered when the typing effect of a bubble is completed. |
+| 事件名    | 参数              | 类型     | 说明                     |
+| --------- | ----------------- | -------- | ------------------------ |
+| `@complete` | (instance, index) | Function | 气泡的打字机效果完成时触发 |
 
-## Ref Instance Methods
+## Ref 实例方法
 
-| Name             | Type     | Description                           |
-| ---------------- | -------- | ------------------------------------- |
-| `scrollToTop`    | Function | Scroll to the top.                    |
-| `scrollToBottom` | Function | Scroll to the bottom.                 |
-| `scrollToBubble` | Function | Scroll to the specified bubble index. |
+| 方法名          | 类型     | 说明                   |
+| --------------- | -------- | ----------------------- |
+| `scrollToTop`    | Function | 滚动到顶部             |
+| `scrollToBottom` | Function | 滚动到底部             |
+| `scrollToBubble` | Function | 滚动到指定的气泡索引   |
 
-## Slots
+## 插槽
 
-| Slot Name  | Parameter | Type | Description                         |
-| ---------- | --------- | ---- | ----------------------------------- |
-| `#avatar`  | -         | Slot | Custom avatar display content       |
-| `#header`  | -         | Slot | Custom bubble header content        |
-| `#content` | -         | Slot | Custom bubble content               |
-| `#loading` | -         | Slot | Custom bubble loading state content |
-| `#footer`  | -         | Slot | Custom bubble footer content        |
+| 插槽名     | 参数 | 类型 | 说明                 |
+| ---------- | ---- | ---- | -------------------- |
+| `#avatar`  | -    | Slot | 自定义头像显示内容   |
+| `#header`  | -    | Slot | 自定义气泡头部内容   |
+| `#content` | -    | Slot | 自定义气泡内容       |
+| `#loading` | -    | Slot | 自定义气泡加载状态内容 |
+| `#footer`  | -    | Slot | 自定义气泡底部内容   |
 
-## Features
+## 特性
 
-1. **Smart Scrolling** - Automatically tracks the latest message position
-2. **Deep Customization** - Full slot passthrough for bubble components
-3. **Multiple Scrolling Methods** - Scroll to top, bottom, or specific position
-4. **Typing Effect** - Supports typing effect
-5. **Multiple Styles** - Supports various styles such as round, square, etc.
+1. **智能滚动** - 自动追踪最新消息位置
+2. **深度定制** - 完整的插槽透传给气泡组件
+3. **多种滚动方式** - 支持滚动到顶部、底部或指定位置
+4. **打字机效果** - 支持打字机动画效果
+5. **多种样式** - 支持圆形、方形等多种样式

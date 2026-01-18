@@ -1,77 +1,176 @@
 ---
 name: springai
-description: Spring AI framework for building AI-powered applications with Spring Boot. Use this skill when working with Spring AI, integrating AI models (OpenAI, Anthropic, Ollama, etc.), implementing RAG patterns, vector databases, embeddings, chat models, and AI agents in Spring applications.
+description: Spring AI 框架 - 用于在 Spring Boot 中构建 AI 驱动的应用程序。使用此技能进行 Spring AI 开发，集成 AI 模型（OpenAI、Anthropic、Ollama 等），实现 RAG 模式、向量数据库、嵌入模型、聊天模型和 AI 代理。
 ---
 
-# Springai Skill
+# Spring AI 技能文档
 
-Comprehensive assistance with springai development, generated from official documentation.
+基于官方文档生成的 Spring AI 开发综合指南。
 
-## When to Use This Skill
+## 何时使用此技能
 
-This skill should be triggered when:
-- Working with springai
-- Asking about springai features or APIs
-- Implementing springai solutions
-- Debugging springai code
-- Learning springai best practices
+在以下场景中使用此技能：
+- 开发 Spring AI 应用程序
+- 查询 Spring AI 功能或 API
+- 实现 Spring AI 解决方案
+- 调试 Spring AI 代码
+- 学习 Spring AI 最佳实践
 
-## Quick Reference
+## 技术概述
 
-### Common Patterns
+**Spring AI** 是 Spring 生态系统中的 AI 工程应用框架，它为 AI 应用开发提供了 Spring 友好的 API 和抽象层。该项目于 2025 年 5 月发布 1.0 正式版，旨在简化 AI 应用的开发流程。
 
-**Pattern 1:** Manual Configuration Instead of using Spring Boot auto-configuration, you can manually configure the WeaviateVectorStore using the builder pattern: @Bean public WeaviateClient weaviateClient() { return new WeaviateClient(new Config("http", "localhost:8080")); } @Bean public VectorStore vectorStore(WeaviateClient weaviateClient, EmbeddingModel embeddingModel) { return WeaviateVectorStore.builder(weaviateClient, embeddingModel) .options(options) // Optional: use custom options .consistencyLevel(ConsistentLevel.QUORUM) // Optional: defaults to ConsistentLevel.ONE .filterMetadataFields(List.of( // Optional: fields that can be used in filters MetadataField.text("country"), MetadataField.number("year"))) .build(); }
+### 核心特性
 
-```
-WeaviateVectorStore
-```
+- **多模型支持**：支持 OpenAI、Anthropic、Ollama、Azure OpenAI 等主流 AI 模型
+- **RAG 架构**：内置检索增强生成（RAG）支持，模块化架构支持自定义 RAG 流程
+- **向量数据库集成**：支持 Apache Cassandra、PostgreSQL/PGVector、MongoDB Atlas、Redis、Weaviate、Chroma、Milvus 等向量数据库
+- **标准化接口**：统一的检索、生成和提示管理接口
+- **Spring 原生集成**：与 Spring Boot 无缝集成，支持自动配置
 
-**Pattern 2:** Runtime Options The OpenAiAudioSpeechOptions class provides the options to use when making a text-to-speech request. On start-up, the options specified by spring.ai.openai.audio.speech are used but you can override these at runtime. The OpenAiAudioSpeechOptions class implements the TextToSpeechOptions interface, providing both portable and OpenAI-specific configuration options. For example: OpenAiAudioSpeechOptions speechOptions = OpenAiAudioSpeechOptions.builder() .model("gpt-4o-mini-tts") .voice(OpenAiAudioApi.SpeechRequest.Voice.ALLOY) .responseFormat(OpenAiAudioApi.SpeechRequest.AudioResponseFormat.MP3) .speed(1.0) .build(); TextToSpeechPrompt speechPrompt = new TextToSpeechPrompt("Hello, this is a text-to-speech example.", speechOptions); TextToSpeechResponse response = openAiAudioSpeechModel.call(speechPrompt);
+### 版本说明
 
-```
-OpenAiAudioSpeechOptions
-```
+- **稳定版本**：1.0.0 及以上版本已在 Maven Central 提供发布
+- **开发版本**：1.1.0-SNAPSHOT 等快照版本需配置额外的仓库
 
-**Pattern 3:** Built-in Recursive Advisors Spring AI provides two built-in recursive advisors that demonstrate this pattern: ToolCallAdvisor The ToolCallAdvisor implements the tool calling loop as part of the advisor chain, rather than relying on the model’s internal tool execution. This enables other advisors in the chain to intercept and observe the tool calling process. Key features: Disables the model’s internal tool execution by setting setInternalToolExecutionEnabled(false) Loops through the advisor chain until no more tool calls are present Supports "return direct" functionality - when a tool execution has returnDirect=true, it interrupts the tool calling loop and returns the tool execution result directly to the client application instead of sending it back to the LLM Uses callAdvisorChain.copy(this) to create a sub-chain for recursive calls Includes null safety checks to handle cases where the chat response might be null Example usage: var toolCallAdvisor = ToolCallAdvisor.builder() .toolCallingManager(toolCallingManager) .advisorOrder(BaseAdvisor.HIGHEST_PRECEDENCE + 300) .build(); var chatClient = ChatClient.builder(chatModel) .defaultAdvisors(toolCallAdvisor) .build(); Return Direct Functionality The "return direct" feature allows tools to bypass the LLM and return their results directly to the client application. This is useful when: The tool’s output is the final answer and doesn’t need LLM processing You want to reduce latency by avoiding an additional LLM call The tool result should be returned as-is without interpretation When a tool execution has returnDirect=true, the ToolCallAdvisor will: Execute the tool call as normal Detect the returnDirect flag in the ToolExecutionResult Break out of the tool calling loop Return the tool execution result directly to the client application as a ChatResponse with the tool’s output as the generation content StructuredOutputValidationAdvisor The StructuredOutputValidationAdvisor validates the structured JSON output against a generated JSON schema and retries the call if validation fails, up to a specified number of attempts. Key features: Automatically generates a JSON schema from the expected output type Validates the LLM response against the schema Retries the call if validation fails, up to a configurable number of attempts Augments the prompt with validation error messages on retry attempts to help the LLM correct its output Uses callAdvisorChain.copy(this) to create a sub-chain for recursive calls Optionally supports a custom ObjectMapper for JSON processing Example usage: var validationAdvisor = StructuredOutputValidationAdvisor.builder() .outputType(MyResponseType.class) .maxRepeatAttempts(3) .advisorOrder(BaseAdvisor.HIGHEST_PRECEDENCE + 1000) .build(); var chatClient = ChatClient.builder(chatModel) .defaultAdvisors(validationAdvisor) .build();
+## 快速参考
 
-```
-ToolCallAdvisor
-```
+### 常见配置模式
 
-**Pattern 4:** Manual Configuration Instead of using the Spring Boot auto-configuration, you can manually configure the Neo4j vector store. For this you need to add the spring-ai-neo4j-store to your project: <dependency> <groupId>org.springframework.ai</groupId> <artifactId>spring-ai-neo4j-store</artifactId> </dependency> or to your Gradle build.gradle build file. dependencies { implementation 'org.springframework.ai:spring-ai-neo4j-store' } Refer to the Dependency Management section to add the Spring AI BOM to your build file. Create a Neo4j Driver bean. Read the Neo4j Documentation for more in-depth information about the configuration of a custom driver. @Bean public Driver driver() { return GraphDatabase.driver("neo4j://<host>:<bolt-port>", AuthTokens.basic("<username>", "<password>")); } Then create the Neo4jVectorStore bean using the builder pattern: @Bean public VectorStore vectorStore(Driver driver, EmbeddingModel embeddingModel) { return Neo4jVectorStore.builder(driver, embeddingModel) .databaseName("neo4j") // Optional: defaults to "neo4j" .distanceType(Neo4jDistanceType.COSINE) // Optional: defaults to COSINE .embeddingDimension(1536) // Optional: defaults to 1536 .label("Document") // Optional: defaults to "Document" .embeddingProperty("embedding") // Optional: defaults to "embedding" .indexName("custom-index") // Optional: defaults to "spring-ai-document-index" .initializeSchema(true) // Optional: defaults to false .batchingStrategy(new TokenCountBatchingStrategy()) // Optional: defaults to TokenCountBatchingStrategy .build(); } // This can be any EmbeddingModel implementation @Bean public EmbeddingModel embeddingModel() { return new OpenAiEmbeddingModel(new OpenAiApi(System.getenv("OPENAI_API_KEY"))); }
+#### 模式 1：手动配置向量存储
 
-```
-spring-ai-neo4j-store
-```
+不使用 Spring Boot 自动配置，而是通过构建器模式手动配置 Weaviate 向量存储：
 
-**Pattern 5:** Then create the Neo4jVectorStore bean using the builder pattern:
+```java
+@Bean
+public WeaviateClient weaviateClient() {
+    return new WeaviateClient(new Config("http", "localhost:8080"));
+}
 
-```
-Neo4jVectorStore
-```
-
-**Pattern 6:** Runtime Options The OpenAiImageOptions.java provides model configurations, such as the model to use, the quality, the size, etc. On start-up, the default options can be configured with the AzureOpenAiImageModel(OpenAiImageApi openAiImageApi) constructor and the withDefaultOptions(OpenAiImageOptions defaultOptions) method. Alternatively, use the spring.ai.azure.openai.image.options.* properties described previously. At runtime you can override the default options by adding new, request specific, options to the ImagePrompt call. For example to override the OpenAI specific options such as quality and the number of images to create, use the following code example: ImageResponse response = azureOpenaiImageModel.call( new ImagePrompt("A light cream colored mini golden doodle", OpenAiImageOptions.builder() .quality("hd") .N(4) .height(1024) .width(1024).build()) ); In addition to the model specific AzureOpenAiImageOptions you can use a portable ImageOptions instance, created with the ImageOptionsBuilder#builder().
-
-```
-AzureOpenAiImageModel(OpenAiImageApi openAiImageApi)
-```
-
-**Pattern 7:** At runtime you can override the default options by adding new, request specific, options to the ImagePrompt call. For example to override the OpenAI specific options such as quality and the number of images to create, use the following code example:
-
-```
-ImagePrompt
+@Bean
+public VectorStore vectorStore(WeaviateClient weaviateClient, EmbeddingModel embeddingModel) {
+    return WeaviateVectorStore.builder(weaviateClient, embeddingModel)
+        .options(options)                           // 可选：自定义选项
+        .consistencyLevel(ConsistentLevel.QUORUM)   // 可选：默认为 ConsistentLevel.ONE
+        .filterMetadataFields(List.of(              // 可选：可用于过滤的字段
+            MetadataField.text("country"),
+            MetadataField.number("year")))
+        .build();
+}
 ```
 
-**Pattern 8:** Advanced Example: Vector Store on top of Wikipedia Dataset The following example demonstrates how to use the store on an existing schema. Here we use the schema from the github.com/datastax-labs/colbert-wikipedia-data project which comes with the full wikipedia dataset ready vectorized for you. First, create the schema in the Cassandra database: wget https://s.apache.org/colbert-wikipedia-schema-cql -O colbert-wikipedia-schema.cql cqlsh -f colbert-wikipedia-schema.cql Then configure the store using the builder pattern: @Bean public VectorStore vectorStore(CqlSession session, EmbeddingModel embeddingModel) { List<SchemaColumn> partitionColumns = List.of( new SchemaColumn("wiki", DataTypes.TEXT), new SchemaColumn("language", DataTypes.TEXT), new SchemaColumn("title", DataTypes.TEXT) ); List<SchemaColumn> clusteringColumns = List.of( new SchemaColumn("chunk_no", DataTypes.INT), new SchemaColumn("bert_embedding_no", DataTypes.INT) ); List<SchemaColumn> extraColumns = List.of( new SchemaColumn("revision", DataTypes.INT), new SchemaColumn("id", DataTypes.INT) ); return CassandraVectorStore.builder() .session(session) .embeddingModel(embeddingModel) .keyspace("wikidata") .table("articles") .partitionKeys(partitionColumns) .clusteringKeys(clusteringColumns) .contentColumnName("body") .embeddingColumnName("all_minilm_l6_v2_embedding") .indexName("all_minilm_l6_v2_ann") .initializeSchema(false) .addMetadataColumns(extraColumns) .primaryKeyTranslator((List<Object> primaryKeys) -> { if (primaryKeys.isEmpty()) { return "test§¶0"; } return String.format("%s§¶%s", primaryKeys.get(2), primaryKeys.get(3)); }) .documentIdTranslator((id) -> { String[] parts = id.split("§¶"); String title = parts[0]; int chunk_no = parts.length > 1 ? Integer.parseInt(parts[1]) : 0; return List.of("simplewiki", "en", title, chunk_no, 0); }) .build(); } @Bean public EmbeddingModel embeddingModel() { // default is ONNX all-MiniLM-L6-v2 which is what we want return new TransformersEmbeddingModel(); } Loading the Complete Wikipedia Dataset To load the full wikipedia dataset: Download simplewiki-sstable.tar from s.apache.org/simplewiki-sstable-tar (this will take a while, the file is tens of GBs) Load the data: tar -xf simplewiki-sstable.tar -C ${CASSANDRA_DATA}/data/wikidata/articles-*/ nodetool import wikidata articles ${CASSANDRA_DATA}/data/wikidata/articles-*/ If you have existing data in this table, check the tarball’s files don’t clobber existing sstables when doing the tar. An alternative to nodetool import is to just restart Cassandra. If there are any failures in the indexes they will be rebuilt automatically.
+#### 模式 2：运行时选项覆盖
 
+在启动时使用 `spring.ai.openai.audio.speech` 配置，但可以在运行时覆盖这些选项：
+
+```java
+OpenAiAudioSpeechOptions speechOptions = OpenAiAudioSpeechOptions.builder()
+    .model("gpt-4o-mini-tts")
+    .voice(OpenAiAudioApi.SpeechRequest.Voice.ALLOY)
+    .responseFormat(OpenAiAudioApi.SpeechRequest.AudioResponseFormat.MP3)
+    .speed(1.0)
+    .build();
+
+TextToSpeechPrompt speechPrompt = new TextToSpeechPrompt(
+    "Hello, this is a text-to-speech example.",
+    speechOptions
+);
+
+TextToSpeechResponse response = openAiAudioSpeechModel.call(speechPrompt);
 ```
-wget https://s.apache.org/colbert-wikipedia-schema-cql -O colbert-wikipedia-schema.cql
-cqlsh -f colbert-wikipedia-schema.cql
+
+#### 模式 3：内置递归顾问（Advisors）
+
+Spring AI 提供两个内置递归顾问：
+
+**ToolCallAdvisor** - 工具调用循环
+- 通过设置 `setInternalToolExecutionEnabled(false)` 禁用模型的内部工具执行
+- 支持工具的"返回直接"功能 - 当工具执行设置 `returnDirect=true` 时，直接返回结果到客户端
+- 使用 `callAdvisorChain.copy(this)` 创建递归调用的子链
+
+```java
+var toolCallAdvisor = ToolCallAdvisor.builder()
+    .toolCallingManager(toolCallingManager)
+    .advisorOrder(BaseAdvisor.HIGHEST_PRECEDENCE + 300)
+    .build();
+
+var chatClient = ChatClient.builder(chatModel)
+    .defaultAdvisors(toolCallAdvisor)
+    .build();
 ```
 
-### Example Code Patterns
+**StructuredOutputValidationAdvisor** - 结构化输出验证
+- 自动从预期输出类型生成 JSON Schema
+- 验证 LLM 响应是否符合 Schema
+- 验证失败时重试，最多可配置次数
 
-**Example 1** (xml):
+```java
+var validationAdvisor = StructuredOutputValidationAdvisor.builder()
+    .outputType(MyResponseType.class)
+    .maxRepeatAttempts(3)
+    .advisorOrder(BaseAdvisor.HIGHEST_PRECEDENCE + 1000)
+    .build();
+
+var chatClient = ChatClient.builder(chatModel)
+    .defaultAdvisors(validationAdvisor)
+    .build();
+```
+
+#### 模式 4：Neo4j 向量存储配置
+
+```java
+// 1. 添加依赖
+// Maven:
+// <dependency>
+//     <groupId>org.springframework.ai</groupId>
+//     <artifactId>spring-ai-neo4j-store</artifactId>
+// </dependency>
+
+// 2. 创建 Neo4j Driver bean
+@Bean
+public Driver driver() {
+    return GraphDatabase.driver(
+        "neo4j://<host>:<bolt-port>",
+        AuthTokens.basic("<username>", "<password>")
+    );
+}
+
+// 3. 创建 Neo4jVectorStore bean
+@Bean
+public VectorStore vectorStore(Driver driver, EmbeddingModel embeddingModel) {
+    return Neo4jVectorStore.builder(driver, embeddingModel)
+        .databaseName("neo4j")              // 可选：默认为 "neo4j"
+        .distanceType(Neo4jDistanceType.COSINE)  // 可选：默认为 COSINE
+        .embeddingDimension(1536)           // 可选：默认为 1536
+        .label("Document")                  // 可选：默认为 "Document"
+        .embeddingProperty("embedding")     // 可选：默认为 "embedding"
+        .indexName("custom-index")          // 可选：默认为 "spring-ai-document-index"
+        .initializeSchema(true)             // 可选：默认为 false
+        .batchingStrategy(new TokenCountBatchingStrategy())  // 可选
+        .build();
+}
+```
+
+#### 模式 5：图像生成运行时选项
+
+```java
+ImageResponse response = azureOpenaiImageModel.call(
+    new ImagePrompt(
+        "A light cream colored mini golden doodle",
+        OpenAiImageOptions.builder()
+            .quality("hd")
+            .N(4)
+            .height(1024)
+            .width(1024)
+            .build()
+    )
+);
+```
+
+### 代码示例模式
+
+#### 示例 1：添加 MCP 服务器依赖
+
 ```xml
 <dependency>
     <groupId>org.springframework.ai</groupId>
@@ -79,7 +178,8 @@ cqlsh -f colbert-wikipedia-schema.cql
 </dependency>
 ```
 
-**Example 2** (xml):
+#### 示例 2：添加 OpenAI 模型依赖
+
 ```xml
 <dependency>
     <groupId>org.springframework.ai</groupId>
@@ -87,20 +187,23 @@ cqlsh -f colbert-wikipedia-schema.cql
 </dependency>
 ```
 
-**Example 3** (java):
+#### 示例 3：注入聊天记忆
+
 ```java
 @Autowired
 ChatMemory chatMemory;
 ```
 
-**Example 4** (java):
+#### 示例 4：配置消息窗口记忆
+
 ```java
 MessageWindowChatMemory memory = MessageWindowChatMemory.builder()
     .maxMessages(10)
     .build();
 ```
 
-**Example 5** (xml):
+#### 示例 5：添加 PostgresML 嵌入模型依赖
+
 ```xml
 <dependency>
     <groupId>org.springframework.ai</groupId>
@@ -108,60 +211,465 @@ MessageWindowChatMemory memory = MessageWindowChatMemory.builder()
 </dependency>
 ```
 
-## Reference Files
+## 依赖管理
 
-This skill includes comprehensive documentation in `references/`:
+### 使用 BOM（推荐）
 
-- **agents.md** - Agents documentation
-- **api.md** - Api documentation
-- **audio.md** - Audio documentation
-- **chat_models.md** - Chat Models documentation
-- **embeddings.md** - Embeddings documentation
-- **getting_started.md** - Getting Started documentation
-- **image_models.md** - Image Models documentation
-- **mcp.md** - Mcp documentation
-- **moderation.md** - Moderation documentation
-- **observability.md** - Observability documentation
-- **rag.md** - Rag documentation
-- **vector_databases.md** - Vector Databases documentation
+Spring AI 的物料清单（BOM）声明了所有依赖的推荐版本：
 
-Use `view` to read specific reference files when detailed information is needed.
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-bom</artifactId>
+            <version>${spring-ai.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
 
-## Working with This Skill
+### Gradle 配置
 
-### For Beginners
-Start with the getting_started or tutorials reference files for foundational concepts.
+```gradle
+dependencies {
+    implementation platform('org.springframework.ai:spring-ai-bom:${spring-ai.version}')
+    // 添加具体依赖
+    implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter'
+}
+```
 
-### For Specific Features
-Use the appropriate category reference file (api, guides, etc.) for detailed information.
+### 快照版本配置
 
-### For Code Examples
-The quick reference section above contains common patterns extracted from the official docs.
+如需使用快照版本，需添加以下仓库：
 
-## Resources
+**Maven:**
+```xml
+<repositories>
+    <repository>
+        <id>spring-snapshots</id>
+        <name>Spring Snapshots</name>
+        <url>https://repo.spring.io/snapshot</url>
+        <snapshots>
+            <enabled>true</enabled>
+        </snapshots>
+    </repository>
+    <repository>
+        <id>central-portal-snapshots</id>
+        <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+        <snapshots>
+            <enabled>true</enabled>
+        </snapshots>
+    </repository>
+</repositories>
+```
+
+**Gradle:**
+```gradle
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.spring.io/snapshot' }
+    maven { url 'https://central.sonatype.com/repository/maven-snapshots/' }
+}
+```
+
+## 支持的功能模块
+
+### AI 模型集成
+- **聊天模型**：OpenAI、Anthropic、Azure OpenAI、Ollama 等
+- **嵌入模型**：OpenAI、Azure OpenAI、PostgresML、Transformers（ONNX）
+- **图像模型**：OpenAI DALL-E、Azure OpenAI
+- **音频模型**：文本转语音（TTS）、语音转文本
+
+### 向量数据库
+- Apache Cassandra、Azure Vector Search
+- Chroma、Milvus、MongoDB Atlas
+- PostgreSQL (PGVector)、Redis、Weaviate
+- Neo4j、Oracle AI Vector Search
+
+### RAG（检索增强生成）
+- 模块化 RAG 架构
+- 自定义文档加载器
+- 文档分割器
+- 嵌入存储与检索
+- 内置 Advisor 流程
+
+### AI 功能
+- **AI 代理（Agents）**：工具调用、函数执行
+- **内容审核**：内容安全检查
+- **可观测性**：追踪、监控、日志
+- **提示工程**：提示模板与管理
+
+## 参考文档
+
+此技能在 `references/` 目录中包含全面的文档：
+
+| 文档 | 描述 |
+|------|------|
+| **agents.md** | AI 代理文档 |
+| **api.md** | API 参考 |
+| **audio.md** | 音频模型文档 |
+| **chat_models.md** | 聊天模型文档 |
+| **embeddings.md** | 嵌入模型文档 |
+| **getting_started.md** | 入门指南（17 页） |
+| **image_models.md** | 图像模型文档 |
+| **mcp.md** | MCP 协议文档 |
+| **moderation.md** | 内容审核文档 |
+| **observability.md** | 可观测性文档 |
+| **rag.md** | RAG 模式文档 |
+| **vector_databases.md** | 向量数据库文档 |
+
+## 使用指南
+
+### 对于初学者
+1. 从 `getting_started.md` 开始了解基础概念
+2. 通过 Spring Initializr 创建新项目
+3. 添加 BOM 和所需依赖
+4. 配置 AI 模型 API 密钥
+5. 运行第一个示例
+
+### 对于特定功能
+- 查找对应类别的参考文档（api、rag 等）
+- 查看代码示例和配置选项
+- 参考官方文档链接获取详细信息
+
+### 对于代码调试
+- 使用快速参考中的常见模式
+- 检查依赖版本兼容性
+- 验证 API 密钥配置
+- 查看日志输出
+
+## 资源
 
 ### references/
-Organized documentation extracted from official sources. These files contain:
-- Detailed explanations
-- Code examples with language annotations
-- Links to original documentation
-- Table of contents for quick navigation
+从官方来源提取的组织化文档，包含：
+- 详细的功能说明
+- 带语言标注的代码示例
+- 原始文档链接
+- 快速导航目录
 
 ### scripts/
-Add helper scripts here for common automation tasks.
+添加用于常见自动化任务的辅助脚本。
 
 ### assets/
-Add templates, boilerplate, or example projects here.
+添加模板、样板代码或示例项目。
 
-## Notes
+## 注意事项
 
-- This skill was automatically generated from official documentation
-- Reference files preserve the structure and examples from source docs
-- Code examples include language detection for better syntax highlighting
-- Quick reference patterns are extracted from common usage examples in the docs
+- 此技能从官方文档自动生成
+- 参考文档保留了源文档的结构和示例
+- 代码示例包含语言检测以支持语法高亮
+- 快速参考模式提取自文档中的常见用法示例
 
-## Updating
+## 更新说明
 
-To refresh this skill with updated documentation:
-1. Re-run the scraper with the same configuration
-2. The skill will be rebuilt with the latest information
+刷新此技能的文档：
+1. 使用相同配置重新运行爬虫
+2. 技能将使用最新信息重建
+
+## 最新特性 (2025)
+
+### Function Calling (函数调用)
+
+**实现天气查询函数调用:**
+```java
+@SpringBootApplication
+public class FunctionCallingExample {
+
+    public static void main(String[] args) {
+        SpringApplication.run(FunctionCallingExample.class, args);
+    }
+
+    @Bean
+    CommandLineRunner runner(ChatClient.Builder chatClientBuilder) {
+        return args -> {
+            var chatClient = chatClientBuilder.build();
+
+            var response = chatClient.prompt()
+                .user("What is the weather in Amsterdam and Paris?")
+                .functions("weatherFunction")  // 引用函数名称
+                .call()
+                .content();
+
+            System.out.println(response);
+        };
+    }
+
+    @Bean
+    @Description("Get the weather in location")
+    public Function<WeatherRequest, WeatherResponse> weatherFunction() {
+        return new MockWeatherService();
+    }
+
+    public static class MockWeatherService implements Function<WeatherRequest, WeatherResponse> {
+
+        public record WeatherRequest(String location, String unit) {}
+        public record WeatherResponse(double temp, String unit) {}
+
+        @Override
+        public WeatherResponse apply(WeatherRequest request) {
+            double temperature = request.location().contains("Amsterdam") ? 20 : 25;
+            return new WeatherResponse(temperature, request.unit());
+        }
+    }
+}
+```
+
+### 对话式 RAG (Conversational RAG)
+
+**结合记忆和 RAG:**
+```java
+import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
+import org.springframework.ai.rag.preretrieval.query.transformation.CompressionQueryTransformer;
+import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.chat.memory.MessageChatMemoryAdvisor;
+
+@Service
+public class ConversationalRAGService {
+    private final ChatClient chatClient;
+
+    public ConversationalRAGService(ChatModel chatModel, VectorStore vectorStore) {
+        // 结合记忆和 RAG
+        ChatMemory memory = MessageWindowChatMemory.builder().build();
+
+        MessageChatMemoryAdvisor memoryAdvisor = MessageChatMemoryAdvisor
+            .builder(memory)
+            .build();
+
+        RetrievalAugmentationAdvisor ragAdvisor = RetrievalAugmentationAdvisor.builder()
+            // 使用对话历史压缩查询
+            .queryTransformers(
+                CompressionQueryTransformer.builder()
+                    .chatClientBuilder(ChatClient.builder(chatModel))
+                    .build()
+            )
+            .documentRetriever(
+                VectorStoreDocumentRetriever.builder()
+                    .vectorStore(vectorStore)
+                    .build()
+            )
+            .build();
+
+        this.chatClient = ChatClient.builder(chatModel)
+            .defaultAdvisors(memoryAdvisor, ragAdvisor)
+            .build();
+    }
+
+    public String chat(String conversationId, String message) {
+        // 结合记忆上下文和 RAG 知识
+        return chatClient.prompt()
+            .user(message)
+            .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
+            .call()
+            .content();
+    }
+}
+```
+
+### 综合配置 (YAML)
+
+**完整的 Spring AI 配置示例:**
+```yaml
+spring:
+  ai:
+    # OpenAI 配置
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o
+          temperature: 0.7
+          max-tokens: 2048
+      embedding:
+        options:
+          model: text-embedding-3-small
+
+    # Anthropic (Claude) 配置
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY}
+      chat:
+        options:
+          model: claude-3-5-sonnet-20241022
+          temperature: 0.7
+          max-tokens: 4096
+
+    # Azure OpenAI 配置
+    azure:
+      openai:
+        api-key: ${AZURE_OPENAI_API_KEY}
+        endpoint: ${AZURE_OPENAI_ENDPOINT}
+        chat:
+          options:
+            deployment-name: gpt-4o
+            temperature: 0.7
+
+    # Ollama 本地模型配置
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: llama3.2
+          temperature: 0.8
+
+    # Mistral AI 配置
+    mistralai:
+      api-key: ${MISTRAL_API_KEY}
+      chat:
+        options:
+          model: mistral-large-latest
+          temperature: 0.7
+
+    # Google Gemini 配置
+    google:
+      genai:
+        api-key: ${GOOGLE_API_KEY}
+        chat:
+          options:
+            model: gemini-1.5-pro
+            temperature: 0.7
+
+    # 向量存储配置 (PostgreSQL PGVector)
+    vectorstore:
+      pgvector:
+        dimensions: 1536
+        distance-type: COSINE_DISTANCE
+        schema-name: public
+        table-name: vector_store
+        index-type: HNSW
+
+      # MongoDB Atlas 向量存储
+      mongodb:
+        database-name: vector_db
+        collection-name: vector_store
+        path-name: embedding
+        index-name: vector_index
+
+      # Elasticsearch 向量存储
+      elasticsearch:
+        url: http://localhost:9200
+        index-name: spring-ai-vectors
+        dimensions: 1536
+
+    # ChatClient 配置
+    chat:
+      client:
+        enabled: true
+        observations:
+          log-prompt: false  # 安全性: 生产环境不记录提示
+
+# PostgreSQL 数据源配置 (用于 PGVector)
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/vectordb
+    username: postgres
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+# 可观测性配置 (Micrometer)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+```
+
+### Docker Model Runner 集成
+
+**使用 Docker 运行的本地模型:**
+```properties
+# application.properties
+spring.ai.openai.api-key=test
+spring.ai.openai.base-url=http://localhost:12434/engines
+spring.ai.openai.chat.options.model=ai/gemma3:4B-F16
+```
+
+```java
+@SpringBootApplication
+public class DockerModelRunnerApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(DockerModelRunnerApplication.class, args);
+    }
+
+    @Bean
+    CommandLineRunner runner(ChatClient.Builder chatClientBuilder) {
+        return args -> {
+            var chatClient = chatClientBuilder.build();
+
+            var response = chatClient.prompt()
+                .user("What is the weather in Amsterdam and Paris?")
+                .functions("weatherFunction")
+                .call()
+                .content();
+
+            System.out.println(response);
+        };
+    }
+
+    @Bean
+    @Description("Get the weather in location")
+    public Function<WeatherRequest, WeatherResponse> weatherFunction() {
+        return new MockWeatherService();
+    }
+
+    public static class MockWeatherService implements Function<WeatherRequest, WeatherResponse> {
+
+        public record WeatherRequest(String location, String unit) {}
+        public record WeatherResponse(double temp, String unit) {}
+
+        @Override
+        public WeatherResponse apply(WeatherRequest request) {
+            double temperature = request.location().contains("Amsterdam") ? 20 : 25;
+            return new WeatherResponse(temperature, request.unit());
+        }
+    }
+}
+```
+
+### 支持的 AI 提供商 (2025)
+
+| 提供商 | 模型类型 | 支持状态 |
+|--------|----------|----------|
+| **OpenAI** | Chat、Embedding、Image、Audio | ✅ 完全支持 |
+| **Anthropic** | Chat (Claude) | ✅ 完全支持 |
+| **Azure OpenAI** | Chat、Embedding、Image | ✅ 完全支持 |
+| **Ollama** | 本地模型 | ✅ 完全支持 |
+| **Mistral AI** | Chat | ✅ 完全支持 |
+| **Google Gemini** | Chat、Embedding | ✅ 完全支持 |
+| **DeepSeek** | Chat | ✅ 完全支持 |
+| **PostgresML** | Embedding | ✅ 完全支持 |
+
+### 支持的向量数据库 (2025)
+
+| 向量数据库 | 支持状态 | 特性 |
+|-----------|----------|------|
+| **PostgreSQL PGVector** | ✅ | 开源、ACID 兼容 |
+| **MongoDB Atlas** | ✅ | 完全托管、可扩展 |
+| **Elasticsearch** | ✅ | 全文搜索 + 向量搜索 |
+| **Azure Cosmos DB** | ✅ | 全球分布、低延迟 |
+| **Chroma** | ✅ | 轻量级、易于使用 |
+| **Redis** | ✅ | 高性能、内存优先 |
+| **Weaviate** | ✅ | GraphQL API |
+| **Milvus** | ✅ | 高性能分布式 |
+| **Neo4j** | ✅ | 图数据库 + 向量 |
+| **Apache Cassandra** | ✅ | 分布式 NoSQL |
+
+## 相关资源
+
+- [Spring AI 官方网站](https://spring.io/projects/spring-ai)
+- [Spring AI 参考文档](https://docs.spring.io/spring-ai/reference/index.html)
+- [GitHub 仓库](https://github.com/spring-projects/spring-ai)
+- [Spring AI 1.0 发布说明](https://www.infoq.com/news/2025/05/spring-ai-1-0-streamlines-apps/)

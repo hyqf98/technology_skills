@@ -1,148 +1,705 @@
 ---
 name: electron
-description: Use this skill when working with Electron framework - building cross-platform desktop applications with JavaScript, HTML, and CSS. Covers main and renderer processes, IPC, native APIs, security best practices, and distribution.
+description: Electron 框架 - 使用 JavaScript、HTML 和 CSS 构建跨平台桌面应用程序。涵盖主进程和渲染进程、IPC 通信、原生 API、安全最佳实践和应用分发。
 ---
 
-# Electron Skill
+# Electron 技能文档
 
-Comprehensive assistance with electron development, generated from official documentation.
+基于官方文档生成的 Electron 开发综合指南。
 
-## When to Use This Skill
+## 何时使用此技能
 
-This skill should be triggered when:
-- Working with electron
-- Asking about electron features or APIs
-- Implementing electron solutions
-- Debugging electron code
-- Learning electron best practices
+在以下场景中使用此技能：
+- 开发 Electron 跨平台桌面应用
+- 查询 Electron 功能或 API
+- 实现 Electron 解决方案
+- 调试 Electron 代码
+- 学习 Electron 最佳实践
 
-## Quick Reference
+## 技术概述
 
-### Common Patterns
+**Electron** 是一个使用 JavaScript、HTML 和 CSS 构建跨平台桌面应用程序的框架。它将 Chromium 和 Node.js 结合到同一个运行时环境中，使开发者能够使用 Web 技术创建原生级别的桌面应用。
 
-**Pattern 1:** Automated Testing Test automation is an efficient way of validating that your application code works as intended. While Electron doesn't actively maintain its own testing solution, this guide will go over a couple ways you can run end-to-end automated tests on your Electron app. Using the WebDriver interface​ From ChromeDriver - WebDriver for Chrome: WebDriver is an open source tool for automated testing of web apps across many browsers. It provides capabilities for navigating to web pages, user input, JavaScript execution, and more. ChromeDriver is a standalone server which implements WebDriver's wire protocol for Chromium. It is being developed by members of the Chromium and WebDriver teams. There are a few ways that you can set up testing using WebDriver. With WebdriverIO​ WebdriverIO (WDIO) is a test automation framework that provides a Node.js package for testing with WebDriver. Its ecosystem also includes various plugins (e.g. reporter and services) that can help you put together your test setup. If you already have an existing WebdriverIO setup, it is recommended to update your dependencies and validate your existing configuration with how it is outlined in the docs. Install the test runner​ If you don't use WebdriverIO in your project yet, you can add it by running the starter toolkit in your project root directory: npmYarnnpm init wdio@latest ./yarn create wdio@latest ./ This starts a configuration wizard that helps you put together the right setup, installs all necessary packages, and generates a wdio.conf.js configuration file. Make sure to select "Desktop Testing - of Electron Applications" on one of the first questions asking "What type of testing would you like to do?". Connect WDIO to your Electron app​ After running the configuration wizard, your wdio.conf.js should include roughly the following content: wdio.conf.jsexport const config = { // ... services: ['electron'], capabilities: [{ browserName: 'electron', 'wdio:electronServiceOptions': { // WebdriverIO can automatically find your bundled application // if you use Electron Forge or electron-builder, otherwise you // can define it here, e.g.: // appBinaryPath: './path/to/bundled/application.exe', appArgs: ['foo', 'bar=baz'] } }] // ...} Write your tests​ Use the WebdriverIO API to interact with elements on the screen. The framework provides custom "matchers" that make asserting the state of your application easy, e.g.: import { browser, $, expect } from '@wdio/globals'describe('keyboard input', () => { it('should detect keyboard input', async () => { await browser.keys(['y', 'o']) await expect($('keypress-count')).toHaveText('YO') })}) Furthermore, WebdriverIO allows you to access Electron APIs to get static information about your application: import { browser } from '@wdio/globals'describe('trigger message modal', async () => { it('message modal can be triggered from a test', async () => { await browser.electron.execute( (electron, param1, param2, param3) => { const appWindow = electron.BrowserWindow.getFocusedWindow() electron.dialog.showMessageBox(appWindow, { message: 'Hello World!', detail: `${param1} + ${param2} + ${param3} = ${param1 + param2 + param3}` }) }, 1, 2, 3 ) })}) Run your tests​ To run your tests: $ npx wdio run wdio.conf.js WebdriverIO helps launch and shut down the application for you. More documentation​ Find more documentation on Mocking Electron APIs and other useful resources in the official WebdriverIO documentation. With Selenium​ Selenium is a web automation framework that exposes bindings to WebDriver APIs in many languages. Their Node.js bindings are available under the selenium-webdriver package on NPM. Run a ChromeDriver server​ In order to use Selenium with Electron, you need to download the electron-chromedriver binary, and run it: npmYarnnpm install --save-dev electron-chromedriver./node_modules/.bin/chromedriverStarting ChromeDriver (v2.10.291558) on port 9515Only local connections are allowed.yarn add --dev electron-chromedriver./node_modules/.bin/chromedriverStarting ChromeDriver (v2.10.291558) on port 9515Only local connections are allowed. Remember the port number 9515, which will be used later. Connect Selenium to ChromeDriver​ Next, install Selenium into your project: npmYarnnpm install --save-dev selenium-webdriveryarn add --dev selenium-webdriver Usage of selenium-webdriver with Electron is the same as with normal websites, except that you have to manually specify how to connect ChromeDriver and where to find the binary of your Electron app: test.jsconst webdriver = require('selenium-webdriver')const driver = new webdriver.Builder() // The "9515" is the port opened by ChromeDriver. .usingServer('http://localhost:9515') .withCapabilities({ 'goog:chromeOptions': { // Here is the path to your Electron binary. binary: '/Path-to-Your-App.app/Contents/MacOS/Electron' } }) .forBrowser('chrome') // note: use .forBrowser('electron') for selenium-webdriver <= 3.6.0 .build()driver.get('https://www.google.com')driver.findElement(webdriver.By.name('q')).sendKeys('webdriver')driver.findElement(webdriver.By.name('btnG')).click()driver.wait(() => { return driver.getTitle().then((title) => { return title === 'webdriver - Google Search' })}, 1000)driver.quit() Using Playwright​ Microsoft Playwright is an end-to-end testing framework built using browser-specific remote debugging protocols, similar to the Puppeteer headless Node.js API but geared towards end-to-end testing. Playwright has experimental Electron support via Electron's support for the Chrome DevTools Protocol (CDP). Install dependencies​ You can install Playwright through your preferred Node.js package manager. It comes with its own test runner, which is built for end-to-end testing: npmYarnnpm install --save-dev @playwright/testyarn add --dev @playwright/test DependenciesThis tutorial was written with @playwright/test@1.52.0. Check out Playwright's releases page to learn about changes that might affect the code below. Write your tests​ Playwright launches your app in development mode through the _electron.launch API. To point this API to your Electron app, you can pass the path to your main process entry point (here, it is main.js). import { test, _electron as electron } from '@playwright/test'test('launch app', async () => { const electronApp = await electron.launch({ args: ['.'] }) // close app await electronApp.close()}) After that, you will access to an instance of Playwright's ElectronApp class. This is a powerful class that has access to main process modules for example: import { test, _electron as electron } from '@playwright/test'test('get isPackaged', async () => { const electronApp = await electron.launch({ args: ['.'] }) const isPackaged = await electronApp.evaluate(async ({ app }) => { // This runs in Electron's main process, parameter here is always // the result of the require('electron') in the main app script. return app.isPackaged }) console.log(isPackaged) // false (because we're in development mode) // close app await electronApp.close()}) It can also create individual Page objects from Electron BrowserWindow instances. For example, to grab the first BrowserWindow and save a screenshot: import { test, _electron as electron } from '@playwright/test'test('save screenshot', async () => { const electronApp = await electron.launch({ args: ['.'] }) const window = await electronApp.firstWindow() await window.screenshot({ path: 'intro.png' }) // close app await electronApp.close()}) Putting all this together using the Playwright test-runner, let's create a example.spec.js test file with a single test and assertion: example.spec.jsimport { test, expect, _electron as electron } from '@playwright/test'test('example test', async () => { const electronApp = await electron.launch({ args: ['.'] }) const isPackaged = await electronApp.evaluate(async ({ app }) => { // This runs in Electron's main process, parameter here is always // the result of the require('electron') in the main app script. return app.isPackaged }) expect(isPackaged).toBe(false) // Wait for the first BrowserWindow to open // and return its Page object const window = await electronApp.firstWindow() await window.screenshot({ path: 'intro.png' }) // close app await electronApp.close()}) Then, run Playwright Test using npx playwright test. You should see the test pass in your console, and have an intro.png screenshot on your filesystem. ☁ $ npx playwright testRunning 1 test using 1 worker ✓ example.spec.js:4:1 › example test (1s) infoPlaywright Test will automatically run any files matching the .*(test|spec)\.(js|ts|mjs) regex. You can customize this match in the Playwright Test configuration options. It also works with TypeScript out of the box. Further readingCheck out Playwright's documentation for the full Electron and ElectronApplication class APIs. Using a custom test driver​ It's also possible to write your own custom driver using Node.js' built-in IPC-over-STDIO. Custom test drivers require you to write additional app code, but have lower overhead and let you expose custom methods to your test suite. To create a custom driver, we'll use Node.js' child_process API. The test suite will spawn the Electron process, then establish a simple messaging protocol: testDriver.jsconst electronPath = require('electron')const childProcess = require('node:child_process')// spawn the processconst env = { /* ... */ }const stdio = ['inherit', 'inherit', 'inherit', 'ipc']const appProcess = childProcess.spawn(electronPath, ['./app'], { stdio, env })// listen for IPC messages from the appappProcess.on('message', (msg) => { // ...})// send an IPC message to the appappProcess.send({ my: 'message' }) From within the Electron app, you can listen for messages and send replies using the Node.js process API: main.js// listen for messages from the test suiteprocess.on('message', (msg) => { // ...})// send a message to the test suiteprocess.send({ my: 'message' }) We can now communicate from the test suite to the Electron app using the appProcess object. For convenience, you may want to wrap appProcess in a driver object that provides more high-level functions. Here is an example of how you can do this. Let's start by creating a TestDriver class: testDriver.jsclass TestDriver { constructor ({ path, args, env }) { this.rpcCalls = [] // start child process env.APP_TEST_DRIVER = 1 // let the app know it should listen for messages this.process = childProcess.spawn(path, args, { stdio: ['inherit', 'inherit', 'inherit', 'ipc'], env }) // handle rpc responses this.process.on('message', (message) => { // pop the handler const rpcCall = this.rpcCalls[message.msgId] if (!rpcCall) return this.rpcCalls[message.msgId] = null // reject/resolve if (message.reject) rpcCall.reject(message.reject) else rpcCall.resolve(message.resolve) }) // wait for ready this.isReady = this.rpc('isReady').catch((err) => { console.error('Application failed to start', err) this.stop() process.exit(1) }) } // simple RPC call // to use: driver.rpc('method', 1, 2, 3).then(...) async rpc (cmd, ...args) { // send rpc request const msgId = this.rpcCalls.length this.process.send({ msgId, cmd, args }) return new Promise((resolve, reject) => this.rpcCalls.push({ resolve, reject })) } stop () { this.process.kill() }}module.exports = { TestDriver } In your app code, can then write a simple handler to receive RPC calls: main.jsconst METHODS = { isReady () { // do any setup needed return true } // define your RPC-able methods here}const onMessage = async ({ msgId, cmd, args }) => { let method = METHODS[cmd] if (!method) method = () => new Error('Invalid method: ' + cmd) try { const resolve = await method(...args) process.send({ msgId, resolve }) } catch (err) { const reject = { message: err.message, stack: err.stack, name: err.name } process.send({ msgId, reject }) }}if (process.env.APP_TEST_DRIVER) { process.on('message', onMessage)} Then, in your test suite, you can use your TestDriver class with the test automation framework of your choosing. The following example uses ava, but other popular choices like Jest or Mocha would work as well: test.jsconst electronPath = require('electron')const test = require('ava')const { TestDriver } = require('./testDriver')const app = new TestDriver({ path: electronPath, args: ['./app'], env: { NODE_ENV: 'test' }})test.before(async t => { await app.isReady})test.after.always('cleanup', async t => { await app.stop()})
+### 核心特性
+
+- **跨平台支持**：支持 Windows、macOS 和 Linux
+- **Web 技术**：使用 HTML、CSS、JavaScript 开发
+- **Node.js 集成**：访问所有 Node.js API 和原生模块
+- **自动更新**：内置自动更新机制
+- **原生菜单**：系统级菜单和通知
+- **强大的打包工具**：electron-builder、electron-forge 等
+
+### 架构模式
+
+Electron 采用多进程架构：
 
 ```
+┌─────────────────────────────────────────────────────────────┐
+│                      Electron 应用架构                         │
+├─────────────────────────────────────────────────────────────┤
+│  主进程（Main Process）          │  渲染进程（Renderer Process）  │
+│  ├─ 应用生命周期                 │  ├─ Web 页面渲染              │
+│  ├─ 窗口管理                     │  ├─ 用户界面                 │
+│  ├─ 原生菜单/对话框              │  └─ 沙箱环境                 │
+│  ├─ ipcMain 模块                 │                              │
+│  └─ Node.js 完整访问             │  └─ ipcRenderer（通过 preload）│
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 快速参考
+
+### 常见配置模式
+
+#### 模式 1：创建主窗口
+
+```javascript
+const { app, BrowserWindow } = require('electron');
+
+function createWindow() {
+    const win = new BrowserWindow({
+        width: 800,
+        height: 600,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js')
+        }
+    });
+
+    win.loadFile('index.html');
+}
+
+app.whenReady().then(createWindow);
+```
+
+#### 模式 2：IPC 通信（单向）
+
+**主进程 (main.js):**
+```javascript
+const { ipcMain } = require('electron');
+
+ipcMain.on('message-from-renderer', (event, data) => {
+    console.log('收到消息:', data);
+    // 发送回渲染进程
+    event.reply('message-from-main', '回复: ' + data);
+});
+```
+
+**预加载脚本 (preload.js):**
+```javascript
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('electronAPI', {
+    sendMessage: (message) => ipcRenderer.send('message-from-renderer', message),
+    onMessage: (callback) => ipcRenderer.on('message-from-main', callback)
+});
+```
+
+**渲染进程:**
+```javascript
+// 发送消息
+window.electronAPI.sendMessage('Hello Main!');
+
+// 接收消息
+window.electronAPI.onMessage((event, message) => {
+    console.log('收到消息:', message);
+});
+```
+
+#### 模式 3：IPC 通信（双向 - invoke/handle）
+
+**主进程:**
+```javascript
+ipcMain.handle('get-app-version', async () => {
+    return app.getVersion();
+});
+
+ipcMain.handle('save-file', async (event, content) => {
+    // 执行文件保存操作
+    return { success: true };
+});
+```
+
+**预加载脚本:**
+```javascript
+contextBridge.exposeInMainWorld('electronAPI', {
+    getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+    saveFile: (content) => ipcRenderer.invoke('save-file', content)
+});
+```
+
+**渲染进程:**
+```javascript
+async function getVersion() {
+    const version = await window.electronAPI.getAppVersion();
+    console.log('应用版本:', version);
+}
+```
+
+#### 模式 4：使用 BaseWindow（多视图窗口）
+
+```javascript
+const { BaseWindow, WebContentsView } = require('electron');
+
+const win = new BaseWindow({ width: 800, height: 600 });
+
+// 创建左侧视图
+const leftView = new WebContentsView();
+leftView.webContents.loadURL('https://electronjs.org');
+win.contentView.addChildView(leftView);
+
+// 创建右侧视图
+const rightView = new WebContentsView();
+rightView.webContents.loadURL('https://github.com/electron/electron');
+win.contentView.addChildView(rightView);
+
+// 设置视图布局
+leftView.setBounds({ x: 0, y: 0, width: 400, height: 600 });
+rightView.setBounds({ x: 400, y: 0, width: 400, height: 600 });
+```
+
+#### 模式 5：安全配置（推荐）
+
+```javascript
+const win = new BrowserWindow({
+    webPreferences: {
+        // 安全配置
+        nodeIntegration: false,        // 禁用 Node.js 集成
+        contextIsolation: true,        // 启用上下文隔离
+        sandbox: true,                 // 启用沙箱模式
+        preload: path.join(__dirname, 'preload.js'),
+        // 内容安全策略
+        webSecurity: true
+    }
+});
+```
+
+#### 模式 6：处理窗口打开事件
+
+```javascript
+const win = new BrowserWindow();
+
+// 限制窗口打开行为
+win.webContents.setWindowOpenHandler(({ url }) => {
+    // 只允许特定 URL
+    if (url === 'about:blank') {
+        return {
+            action: 'allow',
+            overrideBrowserWindowOptions: {
+                frame: false,
+                fullscreenable: false,
+                backgroundColor: 'black'
+            }
+        };
+    }
+    // 阻止其他所有窗口打开
+    return { action: 'deny' };
+});
+```
+
+### 代码示例模式
+
+#### 示例 1：安装测试依赖
+
+```bash
+# 使用 WebdriverIO 进行测试
 npm init wdio@latest ./
-```
 
-**Pattern 2:** After that, you will access to an instance of Playwright's ElectronApp class. This is a powerful class that has access to main process modules for example:
-
-```
-ElectronApp
-```
-
-**Pattern 3:** MessageChannelMain MessageChannelMain is the main-process-side equivalent of the DOM MessageChannel object. Its singular function is to create a pair of connected MessagePortMain objects. See the Channel Messaging API documentation for more information on using channel messaging. Class: MessageChannelMain​ Channel interface for channel messaging in the main process. Process: Main Example: // Main processconst { BrowserWindow, MessageChannelMain } = require('electron')const w = new BrowserWindow()const { port1, port2 } = new MessageChannelMain()w.webContents.postMessage('port', null, [port2])port1.postMessage({ some: 'message' })// Renderer processconst { ipcRenderer } = require('electron')ipcRenderer.on('port', (e) => { // e.ports is a list of ports sent along with this message e.ports[0].onmessage = (messageEvent) => { console.log(messageEvent.data) }}) warningElectron's built-in classes cannot be subclassed in user code. For more information, see the FAQ. Instance Properties​ channel.port1​ A MessagePortMain property. channel.port2​ A MessagePortMain property.
-
-```
-MessageChannelMain
-```
-
-**Pattern 4:** Opening windows from the renderer There are several ways to control how windows are created from trusted or untrusted content within a renderer. Windows can be created from the renderer in two ways: clicking on links or submitting forms adorned with target=_blank JavaScript calling window.open() For same-origin content, the new window is created within the same process, enabling the parent to access the child window directly. This can be very useful for app sub-windows that act as preference panels, or similar, as the parent can render to the sub-window directly, as if it were a div in the parent. This is the same behavior as in the browser. Electron pairs this native Chrome Window with a BrowserWindow under the hood. You can take advantage of all the customization available when creating a BrowserWindow in the main process by using webContents.setWindowOpenHandler() for renderer-created windows. BrowserWindow constructor options are set by, in increasing precedence order: parsed options from the features string from window.open(), security-related webPreferences inherited from the parent, and options given by webContents.setWindowOpenHandler. Note that webContents.setWindowOpenHandler has final say and full privilege because it is invoked in the main process. window.open(url[, frameName][, features])​ url string frameName string (optional) features string (optional) Returns Window | null features is a comma-separated key-value list, following the standard format of the browser. Electron will parse BrowserWindowConstructorOptions out of this list where possible, for convenience. For full control and better ergonomics, consider using webContents.setWindowOpenHandler to customize the BrowserWindow creation. A subset of WebPreferences can be set directly, unnested, from the features string: zoomFactor, nodeIntegration, javascript, contextIsolation, and webviewTag. For example: window.open('https://github.com', '_blank', 'top=500,left=200,frame=false,nodeIntegration=no') Notes: Node integration will always be disabled in the opened window if it is disabled on the parent window. Context isolation will always be enabled in the opened window if it is enabled on the parent window. JavaScript will always be disabled in the opened window if it is disabled on the parent window. Non-standard features (that are not handled by Chromium or Electron) given in features will be passed to any registered webContents's did-create-window event handler in the options argument. frameName follows the specification of target located in the native documentation. When opening about:blank, the child window's WebPreferences will be copied from the parent window, and there is no way to override it because Chromium skips browser side navigation in this case. To customize or cancel the creation of the window, you can optionally set an override handler with webContents.setWindowOpenHandler() from the main process. Returning { action: 'deny' } cancels the window. Returning { action: 'allow', overrideBrowserWindowOptions: { ... } } will allow opening the window and setting the BrowserWindowConstructorOptions to be used when creating the window. Note that this is more powerful than passing options through the feature string, as the renderer has more limited privileges in deciding security preferences than the main process. In addition to passing in action and overrideBrowserWindowOptions, outlivesOpener can be passed like: { action: 'allow', outlivesOpener: true, overrideBrowserWindowOptions: { ... } }. If set to true, the newly created window will not close when the opener window closes. The default value is false. Native Window example​ // main.jsconst mainWindow = new BrowserWindow()// In this example, only windows with the `about:blank` url will be created.// All other urls will be blocked.mainWindow.webContents.setWindowOpenHandler(({ url }) => { if (url === 'about:blank') { return { action: 'allow', overrideBrowserWindowOptions: { frame: false, fullscreenable: false, backgroundColor: 'black', webPreferences: { preload: 'my-child-window-preload-script.js' } } } } return { action: 'deny' }}) // renderer process (mainWindow)const childWindow = window.open('', 'modal')childWindow.document.write('<h1>Hello</h1>')
-
-```
-target=_blank
-```
-
-**Pattern 5:** For example:
-
-```
-window.open('https://github.com', '_blank', 'top=500,left=200,frame=false,nodeIntegration=no')
-```
-
-**Pattern 6:** BaseWindow Create and control windows. Process: Main noteBaseWindow provides a flexible way to compose multiple web views in a single window. For windows with only a single, full-size web view, the BrowserWindow class may be a simpler option. This module cannot be used until the ready event of the app module is emitted. // In the main process.const { BaseWindow, WebContentsView } = require('electron')const win = new BaseWindow({ width: 800, height: 600 })const leftView = new WebContentsView()leftView.webContents.loadURL('https://electronjs.org')win.contentView.addChildView(leftView)const rightView = new WebContentsView()rightView.webContents.loadURL('https://github.com/electron/electron')win.contentView.addChildView(rightView)leftView.setBounds({ x: 0, y: 0, width: 400, height: 600 })rightView.setBounds({ x: 400, y: 0, width: 400, height: 600 }) Parent and child windows​ By using parent option, you can create child windows: const { BaseWindow } = require('electron')const parent = new BaseWindow()const child = new BaseWindow({ parent }) The child window will always show on top of the parent window. Modal windows​ A modal window is a child window that disables parent window. To create a modal window, you have to set both the parent and modal options: const { BaseWindow } = require('electron')const parent = new BaseWindow()const child = new BaseWindow({ parent, modal: true }) Platform notices​ On macOS modal windows will be displayed as sheets attached to the parent window. On macOS the child windows will keep the relative position to parent window when parent window moves, while on Windows and Linux child windows will not move. On Linux the type of modal windows will be changed to dialog. On Linux many desktop environments do not support hiding a modal window. Resource management​ When you add a WebContentsView to a BaseWindow and the BaseWindow is closed, the webContents of the WebContentsView are not destroyed automatically. It is your responsibility to close the webContents when you no longer need them, e.g. when the BaseWindow is closed: const { BaseWindow, WebContentsView } = require('electron')const win = new BaseWindow({ width: 800, height: 600 })const view = new WebContentsView()win.contentView.addChildView(view)win.on('closed', () => { view.webContents.close()}) Unlike with a BrowserWindow, if you don't explicitly close the webContents, you'll encounter memory leaks. Class: BaseWindow​ Create and control windows. Process: Main BaseWindow is an EventEmitter. It creates a new BaseWindow with native properties as set by the options. warningElectron's built-in classes cannot be subclassed in user code. For more information, see the FAQ. new BaseWindow([options])​ options BaseWindowConstructorOptions (optional) width Integer (optional) - Window's width in pixels. Default is 800. height Integer (optional) - Window's height in pixels. Default is 600. x Integer (optional) - (required if y is used) Window's left offset from screen. Default is to center the window. y Integer (optional) - (required if x is used) Window's top offset from screen. Default is to center the window. useContentSize boolean (optional) - The width and height would be used as web page's size, which means the actual window's size will include window frame's size and be slightly larger. Default is false. center boolean (optional) - Show window in the center of the screen. Default is false. minWidth Integer (optional) - Window's minimum width. Default is 0. minHeight Integer (optional) - Window's minimum height. Default is 0. maxWidth Integer (optional) - Window's maximum width. Default is no limit. maxHeight Integer (optional) - Window's maximum height. Default is no limit. resizable boolean (optional) - Whether window is resizable. Default is true. movable boolean (optional) macOS Windows - Whether window is movable. This is not implemented on Linux. Default is true. minimizable boolean (optional) macOS Windows - Whether window is minimizable. This is not implemented on Linux. Default is true. maximizable boolean (optional) macOS Windows - Whether window is maximizable. This is not implemented on Linux. Default is true. closable boolean (optional) macOS Windows - Whether window is closable. This is not implemented on Linux. Default is true. focusable boolean (optional) - Whether the window can be focused. Default is true. On Windows setting focusable: false also implies setting skipTaskbar: true. On Linux setting focusable: false makes the window stop interacting with wm, so the window will always stay on top in all workspaces. alwaysOnTop boolean (optional) - Whether the window should always stay on top of other windows. Default is false. fullscreen boolean (optional) - Whether the window should show in fullscreen. When explicitly set to false the fullscreen button will be hidden or disabled on macOS. Default is false. fullscreenable boolean (optional) - Whether the window can be put into fullscreen mode. On macOS, also whether the maximize/zoom button should toggle full screen mode or maximize window. Default is true. simpleFullscreen boolean (optional) macOS - Use pre-Lion fullscreen on macOS. Default is false. skipTaskbar boolean (optional) macOS Windows - Whether to show the window in taskbar. Default is false. hiddenInMissionControl boolean (optional) macOS - Whether window should be hidden when the user toggles into mission control. kiosk boolean (optional) - Whether the window is in kiosk mode. Default is false. title string (optional) - Default window title. Default is "Electron". If the HTML tag <title> is defined in the HTML file loaded by loadURL(), this property will be ignored. icon (NativeImage | string) (optional) - The window icon. On Windows it is recommended to use ICO icons to get best visual effects, you can also leave it undefined so the executable's icon will be used. show boolean (optional) - Whether window should be shown when created. Default is true. frame boolean (optional) - Specify false to create a frameless window. Default is true. parent BaseWindow (optional) - Specify parent window. Default is null. modal boolean (optional) - Whether this is a modal window. This only works when the window is a child window. Default is false. acceptFirstMouse boolean (optional) macOS - Whether clicking an inactive window will also click through to the web contents. Default is false on macOS. This option is not configurable on other platforms. disableAutoHideCursor boolean (optional) - Whether to hide cursor when typing. Default is false. autoHideMenuBar boolean (optional) Linux Windows - Auto hide the menu bar unless the Alt key is pressed. Default is false. enableLargerThanScreen boolean (optional) macOS - Enable the window to be resized larger than screen. Only relevant for macOS, as other OSes allow larger-than-screen windows by default. Default is false. backgroundColor string (optional) - The window's background color in Hex, RGB, RGBA, HSL, HSLA or named CSS color format. Alpha in #AARRGGBB format is supported if transparent is set to true. Default is #FFF (white). See win.setBackgroundColor for more information. hasShadow boolean (optional) - Whether window should have a shadow. Default is true. opacity number (optional) macOS Windows - Set the initial opacity of the window, between 0.0 (fully transparent) and 1.0 (fully opaque). This is only implemented on Windows and macOS. darkTheme boolean (optional) - Forces using dark theme for the window, only works on some GTK+3 desktop environments. Default is false. transparent boolean (optional) - Makes the window transparent. Default is false. On Windows, does not work unless the window is frameless. When you add a View to a BaseWindow, you'll need to call view.setBackgroundColor with a transparent background color on that view to make its background transparent as well. type string (optional) - The type of window, default is normal window. See more about this below. visualEffectState string (optional) macOS - Specify how the material appearance should reflect window activity state on macOS. Must be used with the vibrancy property. Possible values are: followWindow - The backdrop should automatically appear active when the window is active, and inactive when it is not. This is the default. active - The backdrop should always appear active. inactive - The backdrop should always appear inactive. titleBarStyle string (optional) - The style of window title bar. Default is default. Possible values are: default - Results in the standard title bar for macOS or Windows respectively. hidden - Results in a hidden title bar and a full size content window. On macOS, the window still has the standard window controls (“traffic lights”) in the top left. On Windows and Linux, when combined with titleBarOverlay: true it will activate the Window Controls Overlay (see titleBarOverlay for more information), otherwise no window controls will be shown. hiddenInset macOS - Results in a hidden title bar with an alternative look where the traffic light buttons are slightly more inset from the window edge. customButtonsOnHover macOS - Results in a hidden title bar and a full size content window, the traffic light buttons will display when being hovered over in the top left of the window. Note: This option is currently experimental. titleBarOverlay Object | Boolean (optional) - When using a frameless window in conjunction with win.setWindowButtonVisibility(true) on macOS or using a titleBarStyle so that the standard window controls ("traffic lights" on macOS) are visible, this property enables the Window Controls Overlay JavaScript APIs and CSS Environment Variables. Specifying true will result in an overlay with default system colors. Default is false. color String (optional) Windows Linux - The CSS color of the Window Controls Overlay when enabled. Default is the system color. symbolColor String (optional) Windows Linux - The CSS color of the symbols on the Window Controls Overlay when enabled. Default is the system color. height Integer (optional) - The height of the title bar and Window Controls Overlay in pixels. Default is system height. accentColor boolean | string (optional) Windows - The accent color for the window. By default, follows user preference in System Settings. Set to false to explicitly disable, or set the color in Hex, RGB, RGBA, HSL, HSLA or named CSS color format. Alpha values will be ignored. trafficLightPosition Point (optional) macOS - Set a custom position for the traffic light buttons in frameless windows. roundedCorners boolean (optional) macOS Windows - Whether frameless window should have rounded corners. Default is true. Setting this property to false will prevent the window from being fullscreenable on macOS. On Windows versions older than Windows 11 Build 22000 this property has no effect, and frameless windows will not have rounded corners. thickFrame boolean (optional) Windows - Use WS_THICKFRAME style for frameless windows on Windows, which adds the standard window frame. Setting it to false will remove window shadow and window animations, and disable window resizing via dragging the window edges. Default is true. vibrancy string (optional) macOS - Add a type of vibrancy effect to the window, only on macOS. Can be appearance-based, titlebar, selection, menu, popover, sidebar, header, sheet, window, hud, fullscreen-ui, tooltip, content, under-window, or under-page. backgroundMaterial string (optional) Windows - Set the window's system-drawn background material, including behind the non-client area. Can be auto, none, mica, acrylic or tabbed. See win.setBackgroundMaterial for more information. zoomToPageWidth boolean (optional) macOS - Controls the behavior on macOS when option-clicking the green stoplight button on the toolbar or by clicking the Window > Zoom menu item. If true, the window will grow to the preferred width of the web page when zoomed, false will cause it to zoom to the width of the screen. This will also affect the behavior when calling maximize() directly. Default is false. tabbingIdentifier string (optional) macOS - Tab group name, allows opening the window as a native tab. Windows with the same tabbing identifier will be grouped together. This also adds a native new tab button to your window's tab bar and allows your app and window to receive the new-window-for-tab event. When setting minimum or maximum window size with minWidth/maxWidth/ minHeight/maxHeight, it only constrains the users. It won't prevent you from passing a size that does not follow size constraints to setBounds/setSize or to the constructor of BrowserWindow. The possible values and behaviors of the type option are platform dependent. Possible values are: On Linux, possible types are desktop, dock, toolbar, splash, notification. The desktop type places the window at the desktop background window level (kCGDesktopWindowLevel - 1). However, note that a desktop window will not receive focus, keyboard, or mouse events. You can still use globalShortcut to receive input sparingly. The dock type creates a dock-like window behavior. The toolbar type creates a window with a toolbar appearance. The splash type behaves in a specific way. It is not draggable, even if the CSS styling of the window's body contains -webkit-app-region: drag. This type is commonly used for splash screens. The notification type creates a window that behaves like a system notification. On macOS, possible types are desktop, textured, panel. The textured type adds metal gradient appearance. This option is deprecated. The desktop type places the window at the desktop background window level (kCGDesktopWindowLevel - 1). Note that desktop window will not receive focus, keyboard or mouse events, but you can use globalShortcut to receive input sparingly. The panel type enables the window to float on top of full-screened apps by adding the NSWindowStyleMaskNonactivatingPanel style mask, normally reserved for NSPanel, at runtime. Also, the window will appear on all spaces (desktops). On Windows, possible type is toolbar. Instance Events​ Objects created with new BaseWindow emit the following events: noteSome events are only available on specific operating systems and are labeled as such. Event: 'close'​ Returns: event Event Emitted when the window is going to be closed. It's emitted before the beforeunload and unload event of the DOM. Calling event.preventDefault() will cancel the close. Usually you would want to use the beforeunload handler to decide whether the window should be closed, which will also be called when the window is reloaded. In Electron, returning any value other than undefined would cancel the close. For example: window.onbeforeunload = (e) => { console.log('I do not want to be closed') // Unlike usual browsers that a message box will be prompted to users, returning // a non-void value will silently cancel the close. // It is recommended to use the dialog API to let the user confirm closing the // application. e.returnValue = false} noteThere is a subtle difference between the behaviors of window.onbeforeunload = handler and window.addEventListener('beforeunload', handler). It is recommended to always set the event.returnValue explicitly, instead of only returning a value, as the former works more consistently within Electron. Event: 'closed'​ Emitted when the window is closed. After you have received this event you should remove the reference to the window and avoid using it any more. Event: 'query-session-end' Windows​ Returns: event WindowSessionEndEvent Emitted when a session is about to end due to a shutdown, machine restart, or user log-off. Calling event.preventDefault() can delay the system shutdown, though it’s generally best to respect the user’s choice to end the session. However, you may choose to use it if ending the session puts the user at risk of losing data. Event: 'session-end' Windows​ Returns: event WindowSessionEndEvent Emitted when a session is about to end due to a shutdown, machine restart, or user log-off. Once this event fires, there is no way to prevent the session from ending. Event: 'blur'​ Returns: event Event Emitted when the window loses focus. Event: 'focus'​ Returns: event Event Emitted when the window gains focus. Event: 'show'​ Emitted when the window is shown. Event: 'hide'​ Emitted when the window is hidden. Event: 'maximize'​ Emitted when window is maximized. Event: 'unmaximize'​ Emitted when the window exits from a maximized state. Event: 'minimize'​ Emitted when the window is minimized. Event: 'restore'​ Emitted when the window is restored from a minimized state. Event: 'will-resize' macOS Windows​ Returns: event Event newBounds Rectangle - Size the window is being resized to. details Object edge (string) - The edge of the window being dragged for resizing. Can be bottom, left, right, top-left, top-right, bottom-left or bottom-right. Emitted before the window is resized. Calling event.preventDefault() will prevent the window from being resized. Note that this is only emitted when the window is being resized manually. Resizing the window with setBounds/setSize will not emit this event. The possible values and behaviors of the edge option are platform dependent. Possible values are: On Windows, possible values are bottom, top, left, right, top-left, top-right, bottom-left, bottom-right. On macOS, possible values are bottom and right. The value bottom is used to denote vertical resizing. The value right is used to denote horizontal resizing. Event: 'resize'​ Emitted after the window has been resized. Event: 'resized' macOS Windows​ Emitted once when the window has finished being resized. This is usually emitted when the window has been resized manually. On macOS, resizing the window with setBounds/setSize and setting the animate parameter to true will also emit this event once resizing has finished. Event: 'will-move' macOS Windows​ Returns: event Event newBounds Rectangle - Location the window is being moved to. Emitted before the window is moved. On Windows, calling event.preventDefault() will prevent the window from being moved. Note that this is only emitted when the window is being moved manually. Moving the window with setPosition/setBounds/center will not emit this event. Event: 'move'​ Emitted when the window is being moved to a new position. Event: 'moved' macOS Windows​ Emitted once when the window is moved to a new position. noteOn macOS, this event is an alias of move. Event: 'enter-full-screen'​ Emitted when the window enters a full-screen state. Event: 'leave-full-screen'​ Emitted when the window leaves a full-screen state. Event: 'always-on-top-changed'​ Returns: event Event isAlwaysOnTop boolean Emitted when the window is set or unset to show always on top of other windows. Event: 'app-command' Windows Linux​ Returns: event Event command string Emitted when an App Command is invoked. These are typically related to keyboard media keys or browser commands, as well as the "Back" button built into some mice on Windows. Commands are lowercased, underscores are replaced with hyphens, and the APPCOMMAND_ prefix is stripped off. e.g. APPCOMMAND_BROWSER_BACKWARD is emitted as browser-backward. const { BaseWindow } = require('electron')const win = new BaseWindow()win.on('app-command', (e, cmd) => { // Navigate the window back when the user hits their mouse back button if (cmd === 'browser-backward') { // Find the appropriate WebContents to navigate. }}) The following app commands are explicitly supported on Linux: browser-backward browser-forward Event: 'swipe' macOS​ Returns: event Event direction string Emitted on 3-finger swipe. Possible directions are up, right, down, left. The method underlying this event is built to handle older macOS-style trackpad swiping, where the content on the screen doesn't move with the swipe. Most macOS trackpads are not configured to allow this kind of swiping anymore, so in order for it to emit properly the 'Swipe between pages' preference in System Preferences > Trackpad > More Gestures must be set to 'Swipe with two or three fingers'. Event: 'rotate-gesture' macOS​ Returns: event Event rotation Float Emitted on trackpad rotation gesture. Continually emitted until rotation gesture is ended. The rotation value on each emission is the angle in degrees rotated since the last emission. The last emitted event upon a rotation gesture will always be of value 0. Counter-clockwise rotation values are positive, while clockwise ones are negative. Event: 'sheet-begin' macOS​ Emitted when the window opens a sheet. Event: 'sheet-end' macOS​ Emitted when the window has closed a sheet. Event: 'new-window-for-tab' macOS​ Emitted when the native new tab button is clicked. Event: 'system-context-menu' Windows Linux​ Returns: event Event point Point - The screen coordinates where the context menu was triggered. Emitted when the system context menu is triggered on the window, this is normally only triggered when the user right clicks on the non-client area of your window. This is the window titlebar or any area you have declared as -webkit-app-region: drag in a frameless window. Calling event.preventDefault() will prevent the menu from being displayed. To convert point to DIP, use screen.screenToDipPoint(point). Static Methods​ The BaseWindow class has the following static methods: BaseWindow.getAllWindows()​ Returns BaseWindow[] - An array of all opened browser windows. BaseWindow.getFocusedWindow()​ Returns BaseWindow | null - The window that is focused in this application, otherwise returns null. BaseWindow.fromId(id)​ id Integer Returns BaseWindow | null - The window with the given id. Instance Properties​ Objects created with new BaseWindow have the following properties: const { BaseWindow } = require('electron')// In this example `win` is our instanceconst win = new BaseWindow({ width: 800, height: 600 }) win.id Readonly​ A Integer property representing the unique ID of the window. Each ID is unique among all BaseWindow instances of the entire Electron application. win.contentView​ A View property for the content view of the window. win.tabbingIdentifier macOS Readonly​ A string (optional) property that is equal to the tabbingIdentifier passed to the BrowserWindow constructor or undefined if none was set. win.autoHideMenuBar Linux Windows​ A boolean property that determines whether the window menu bar should hide itself automatically. Once set, the menu bar will only show when users press the single Alt key. If the menu bar is already visible, setting this property to true won't hide it immediately. win.simpleFullScreen​ A boolean property that determines whether the window is in simple (pre-Lion) fullscreen mode. win.fullScreen​ A boolean property that determines whether the window is in fullscreen mode. win.focusable Windows macOS​ A boolean property that determines whether the window is focusable. win.visibleOnAllWorkspaces macOS Linux​ A boolean property that determines whether the window is visible on all workspaces. noteAlways returns false on Windows. win.shadow​ A boolean property that determines whether the window has a shadow. win.menuBarVisible Windows Linux​ A boolean property that determines whether the menu bar should be visible. noteIf the menu bar is auto-hide, users can still bring up the menu bar by pressing the single Alt key. win.kiosk​ A boolean property that determines whether the window is in kiosk mode. win.documentEdited macOS​ A boolean property that specifies whether the window’s document has been edited. The icon in title bar will become gray when set to true. win.representedFilename macOS​ A string property that determines the pathname of the file the window represents, and the icon of the file will show in window's title bar. win.title​ A string property that determines the title of the native window. noteThe title of the web page can be different from the title of the native window. win.minimizable macOS Windows​ A boolean property that determines whether the window can be manually minimized by user. On Linux the setter is a no-op, although the getter returns true. win.maximizable macOS Windows​ A boolean property that determines whether the window can be manually maximized by user. On Linux the setter is a no-op, although the getter returns true. win.fullScreenable​ A boolean property that determines whether the maximize/zoom window button toggles fullscreen mode or maximizes the window. win.resizable​ A boolean property that determines whether the window can be manually resized by user. win.closable macOS Windows​ A boolean property that determines whether the window can be manually closed by user. On Linux the setter is a no-op, although the getter returns true. win.movable macOS Windows​ A boolean property that determines Whether the window can be moved by user. On Linux the setter is a no-op, although the getter returns true. win.excludedFromShownWindowsMenu macOS​ A boolean property that determines whether the window is excluded from the application’s Windows menu. false by default. const { Menu, BaseWindow } = require('electron')const win = new BaseWindow({ height: 600, width: 600 })const template = [ { role: 'windowmenu' }]win.excludedFromShownWindowsMenu = trueconst menu = Menu.buildFromTemplate(template)Menu.setApplicationMenu(menu) win.accessibleTitle​ A string property that defines an alternative title provided only to accessibility tools such as screen readers. This string is not directly visible to users. win.snapped Windows Readonly​ A boolean property that indicates whether the window is arranged via Snap. Instance Methods​ Objects created with new BaseWindow have the following instance methods: noteSome methods are only available on specific operating systems and are labeled as such. win.setContentView(view)​ view View Sets the content view of the window. win.getContentView()​ Returns View - The content view of the window. win.destroy()​ Force closing the window, the unload and beforeunload event won't be emitted for the web page, and close event will also not be emitted for this window, but it guarantees the closed event will be emitted. win.close()​ Try to close the window. This has the same effect as a user manually clicking the close button of the window. The web page may cancel the close though. See the close event. win.focus()​ Focuses on the window. win.blur()​ Removes focus from the window. win.isFocused()​ Returns boolean - Whether the window is focused. win.isDestroyed()​ Returns boolean - Whether the window is destroyed. win.show()​ Shows and gives focus to the window. win.showInactive()​ Shows the window but doesn't focus on it. win.hide()​ Hides the window. win.isVisible()​ Returns boolean - Whether the window is visible to the user in the foreground of the app. win.isModal()​ Returns boolean - Whether current window is a modal window. win.maximize()​ Maximizes the window. This will also show (but not focus) the window if it isn't being displayed already. win.unmaximize()​ Unmaximizes the window. win.isMaximized()​ Returns boolean - Whether the window is maximized. win.minimize()​ Minimizes the window. On some platforms the minimized window will be shown in the Dock. win.restore()​ Restores the window from minimized state to its previous state. win.isMinimized()​ Returns boolean - Whether the window is minimized. win.setFullScreen(flag)​ flag boolean Sets whether the window should be in fullscreen mode. noteOn macOS, fullscreen transitions take place asynchronously. If further actions depend on the fullscreen state, use the 'enter-full-screen' or > 'leave-full-screen' events. win.isFullScreen()​ Returns boolean - Whether the window is in fullscreen mode. win.setSimpleFullScreen(flag) macOS​ flag boolean Enters or leaves simple fullscreen mode. Simple fullscreen mode emulates the native fullscreen behavior found in versions of macOS prior to Lion (10.7). win.isSimpleFullScreen() macOS​ Returns boolean - Whether the window is in simple (pre-Lion) fullscreen mode. win.isNormal()​ Returns boolean - Whether the window is in normal state (not maximized, not minimized, not in fullscreen mode). win.setAspectRatio(aspectRatio[, extraSize])​ aspectRatio Float - The aspect ratio to maintain for some portion of the content view. extraSize Size (optional) macOS - The extra size not to be included while maintaining the aspect ratio. This will make a window maintain an aspect ratio. The extra size allows a developer to have space, specified in pixels, not included within the aspect ratio calculations. This API already takes into account the difference between a window's size and its content size. Consider a normal window with an HD video player and associated controls. Perhaps there are 15 pixels of controls on the left edge, 25 pixels of controls on the right edge and 50 pixels of controls below the player. In order to maintain a 16:9 aspect ratio (standard aspect ratio for HD @1920x1080) within the player itself we would call this function with arguments of 16/9 and { width: 40, height: 50 }. The second argument doesn't care where the extra width and height are within the content view--only that they exist. Sum any extra width and height areas you have within the overall content view. The aspect ratio is not respected when window is resized programmatically with APIs like win.setSize. To reset an aspect ratio, pass 0 as the aspectRatio value: win.setAspectRatio(0). win.setBackgroundColor(backgroundColor)​ backgroundColor string - Color in Hex, RGB, RGBA, HSL, HSLA or named CSS color format. The alpha channel is optional for the hex type. Examples of valid backgroundColor values: Hex #fff (shorthand RGB) #ffff (shorthand ARGB) #ffffff (RGB) #ffffffff (ARGB) RGB rgb\(([\d]+),\s*([\d]+),\s*([\d]+)\) e.g. rgb(255, 255, 255) RGBA rgba\(([\d]+),\s*([\d]+),\s*([\d]+),\s*([\d.]+)\) e.g. rgba(255, 255, 255, 1.0) HSL hsl\((-?[\d.]+),\s*([\d.]+)%,\s*([\d.]+)%\) e.g. hsl(200, 20%, 50%) HSLA hsla\((-?[\d.]+),\s*([\d.]+)%,\s*([\d.]+)%,\s*([\d.]+)\) e.g. hsla(200, 20%, 50%, 0.5) Color name Options are listed in SkParseColor.cpp Similar to CSS Color Module Level 3 keywords, but case-sensitive. e.g. blueviolet or red Sets the background color of the window. See Setting backgroundColor. win.previewFile(path[, displayName]) macOS​ path string - The absolute path to the file to preview with QuickLook. This is important as Quick Look uses the file name and file extension on the path to determine the content type of the file to open. displayName string (optional) - The name of the file to display on the Quick Look modal view. This is purely visual and does not affect the content type of the file. Defaults to path. Uses Quick Look to preview a file at a given path. win.closeFilePreview() macOS​ Closes the currently open Quick Look panel. win.setBounds(bounds[, animate])​ bounds Partial<Rectangle> animate boolean (optional) macOS Resizes and moves the window to the supplied bounds. Any properties that are not supplied will default to their current values. const { BaseWindow } = require('electron')const win = new BaseWindow()// set all bounds propertieswin.setBounds({ x: 440, y: 225, width: 800, height: 600 })// set a single bounds propertywin.setBounds({ width: 100 })// { x: 440, y: 225, width: 100, height: 600 }console.log(win.getBounds()) noteOn macOS, the y-coordinate value cannot be smaller than the Tray height. The tray height has changed over time and depends on the operating system, but is between 20-40px. Passing a value lower than the tray height will result in a window that is flush to the tray. win.getBounds()​ Returns Rectangle - The bounds of the window as Object. noteOn macOS, the y-coordinate value returned will be at minimum the Tray height. For example, calling win.setBounds({ x: 25, y: 20, width: 800, height: 600 }) with a tray height of 38 means that win.getBounds() will return { x: 25, y: 38, width: 800, height: 600 }. win.getBackgroundColor()​ Returns string - Gets the background color of the window in Hex (#RRGGBB) format. See Setting backgroundColor. noteThe alpha value is not returned alongside the red, green, and blue values. win.setContentBounds(bounds[, animate])​ bounds Rectangle animate boolean (optional) macOS Resizes and moves the window's client area (e.g. the web page) to the supplied bounds. win.getContentBounds()​ Returns Rectangle - The bounds of the window's client area as Object. win.getNormalBounds()​ Returns Rectangle - Contains the window bounds of the normal state noteWhatever the current state of the window : maximized, minimized or in fullscreen, this function always returns the position and size of the window in normal state. In normal state, getBounds and getNormalBounds returns the same Rectangle. win.setEnabled(enable)​ enable boolean Disable or enable the window. win.isEnabled()​ Returns boolean - whether the window is enabled. win.setSize(width, height[, animate])​ width Integer height Integer animate boolean (optional) macOS Resizes the window to width and height. If width or height are below any set minimum size constraints the window will snap to its minimum size. win.getSize()​ Returns Integer[] - Contains the window's width and height. win.setContentSize(width, height[, animate])​ width Integer height Integer animate boolean (optional) macOS Resizes the window's client area (e.g. the web page) to width and height. win.getContentSize()​ Returns Integer[] - Contains the window's client area's width and height. win.setMinimumSize(width, height)​ width Integer height Integer Sets the minimum size of window to width and height. win.getMinimumSize()​ Returns Integer[] - Contains the window's minimum width and height. win.setMaximumSize(width, height)​ width Integer height Integer Sets the maximum size of window to width and height. win.getMaximumSize()​ Returns Integer[] - Contains the window's maximum width and height. win.setResizable(resizable)​ resizable boolean Sets whether the window can be manually resized by the user. win.isResizable()​ Returns boolean - Whether the window can be manually resized by the user. win.setMovable(movable) macOS Windows​ movable boolean Sets whether the window can be moved by user. On Linux does nothing. win.isMovable() macOS Windows​ Returns boolean - Whether the window can be moved by user. On Linux always returns true. win.setMinimizable(minimizable) macOS Windows​ minimizable boolean Sets whether the window can be manually minimized by user. On Linux does nothing. win.isMinimizable() macOS Windows​ Returns boolean - Whether the window can be manually minimized by the user. On Linux always returns true. win.setMaximizable(maximizable) macOS Windows​ maximizable boolean Sets whether the window can be manually maximized by user. On Linux does nothing. win.isMaximizable() macOS Windows​ Returns boolean - Whether the window can be manually maximized by user. On Linux always returns true. win.setFullScreenable(fullscreenable)​ fullscreenable boolean Sets whether the maximize/zoom window button toggles fullscreen mode or maximizes the window. win.isFullScreenable()​ Returns boolean - Whether the maximize/zoom window button toggles fullscreen mode or maximizes the window. win.setClosable(closable) macOS Windows​ closable boolean Sets whether the window can be manually closed by user. On Linux does nothing. win.isClosable() macOS Windows​ Returns boolean - Whether the window can be manually closed by user. On Linux always returns true. win.setHiddenInMissionControl(hidden) macOS​ hidden boolean Sets whether the window will be hidden when the user toggles into mission control. win.isHiddenInMissionControl() macOS​ Returns boolean - Whether the window will be hidden when the user toggles into mission control. win.setAlwaysOnTop(flag[, level][, relativeLevel])​ flag boolean level string (optional) macOS Windows - Values include normal, floating, torn-off-menu, modal-panel, main-menu, status, pop-up-menu, screen-saver, and dock (Deprecated). The default is floating when flag is true. The level is reset to normal when the flag is false. Note that from floating to status included, the window is placed below the Dock on macOS and below the taskbar on Windows. From pop-up-menu to a higher it is shown above the Dock on macOS and above the taskbar on Windows. See the macOS docs for more details. relativeLevel Integer (optional) macOS - The number of layers higher to set this window relative to the given level. The default is 0. Note that Apple discourages setting levels higher than 1 above screen-saver. Sets whether the window should show always on top of other windows. After setting this, the window is still a normal window, not a toolbox window which can not be focused on. win.isAlwaysOnTop()​ Returns boolean - Whether the window is always on top of other windows. win.moveAbove(mediaSourceId)​ mediaSourceId string - Window id in the format of DesktopCapturerSource's id. For example "window:1869:0". Moves window above the source window in the sense of z-order. If the mediaSourceId is not of type window or if the window does not exist then this method throws an error. win.moveTop()​ Moves window to top(z-order) regardless of focus win.center()​ Moves window to the center of the screen. win.setPosition(x, y[, animate])​ x Integer y Integer animate boolean (optional) macOS Moves window to x and y. win.getPosition()​ Returns Integer[] - Contains the window's current position. win.setTitle(title)​ title string Changes the title of native window to title. win.getTitle()​ Returns string - The title of the native window. noteThe title of the web page can be different from the title of the native window. win.setSheetOffset(offsetY[, offsetX]) macOS​ offsetY Float offsetX Float (optional) Changes the attachment point for sheets on macOS. By default, sheets are attached just below the window frame, but you may want to display them beneath a HTML-rendered toolbar. For example: const { BaseWindow } = require('electron')const win = new BaseWindow()const toolbarRect = document.getElementById('toolbar').getBoundingClientRect()win.setSheetOffset(toolbarRect.height) win.flashFrame(flag)​ HistoryVersion(s)Changes>=31.0.0window.flashFrame(bool) will flash dock icon continuously on macOS>=29.0.0API ADDED flag boolean Starts or stops flashing the window to attract user's attention. win.setSkipTaskbar(skip) macOS Windows​ skip boolean Makes the window not show in the taskbar. win.setKiosk(flag)​ flag boolean Enters or leaves kiosk mode. win.isKiosk()​ Returns boolean - Whether the window is in kiosk mode. win.isTabletMode() Windows​ Returns boolean - Whether the window is in Windows 10 tablet mode. Since Windows 10 users can use their PC as tablet, under this mode apps can choose to optimize their UI for tablets, such as enlarging the titlebar and hiding titlebar buttons. This API returns whether the window is in tablet mode, and the resize event can be be used to listen to changes to tablet mode. win.getMediaSourceId()​ Returns string - Window id in the format of DesktopCapturerSource's id. For example "window:1324:0". More precisely the format is window:id:other_id where id is HWND on Windows, CGWindowID (uint64_t) on macOS and Window (unsigned long) on Linux. other_id is used to identify web contents (tabs) so within the same top level window. win.getNativeWindowHandle()​ Returns Buffer - The platform-specific handle of the window. The native type of the handle is HWND on Windows, NSView* on macOS, and Window (unsigned long) on Linux. win.hookWindowMessage(message, callback) Windows​ message Integer callback Function wParam Buffer - The wParam provided to the WndProc lParam Buffer - The lParam provided to the WndProc Hooks a windows message. The callback is called when the message is received in the WndProc. win.isWindowMessageHooked(message) Windows​ message Integer Returns boolean - true or false depending on whether the message is hooked. win.unhookWindowMessage(message) Windows​ message Integer Unhook the window message. win.unhookAllWindowMessages() Windows​ Unhooks all of the window messages. win.setRepresentedFilename(filename) macOS​ filename string Sets the pathname of the file the window represents, and the icon of the file will show in window's title bar. win.getRepresentedFilename() macOS​ Returns string - The pathname of the file the window represents. win.setDocumentEdited(edited) macOS​ edited boolean Specifies whether the window’s document has been edited, and the icon in title bar will become gray when set to true. win.isDocumentEdited() macOS​ Returns boolean - Whether the window's document has been edited. win.setMenu(menu) Linux Windows​ menu Menu | null Sets the menu as the window's menu bar. win.removeMenu() Linux Windows​ Remove the window's menu bar. win.setProgressBar(progress[, options])​ progress Double options Object (optional) mode string Windows - Mode for the progress bar. Can be none, normal, indeterminate, error or paused. Sets progress value in progress bar. Valid range is [0, 1.0]. Remove progress bar when progress < 0; Change to indeterminate mode when progress > 1. On Linux platform, only supports Unity desktop environment, you need to specify the *.desktop file name to desktopName field in package.json. By default, it will assume {app.name}.desktop. On Windows, a mode can be passed. Accepted values are none, normal, indeterminate, error, and paused. If you call setProgressBar without a mode set (but with a value within the valid range), normal will be assumed. win.setOverlayIcon(overlay, description) Windows​ overlay NativeImage | null - the icon to display on the bottom right corner of the taskbar icon. If this parameter is null, the overlay is cleared description string - a description that will be provided to Accessibility screen readers Sets a 16 x 16 pixel overlay onto the current taskbar icon, usually used to convey some sort of application status or to passively notify the user. win.invalidateShadow() macOS​ Invalidates the window shadow so that it is recomputed based on the current window shape. BaseWindows that are transparent can sometimes leave behind visual artifacts on macOS. This method can be used to clear these artifacts when, for example, performing an animation. win.setHasShadow(hasShadow)​ hasShadow boolean Sets whether the window should have a shadow. win.hasShadow()​ Returns boolean - Whether the window has a shadow. win.setOpacity(opacity) Windows macOS​ opacity number - between 0.0 (fully transparent) and 1.0 (fully opaque) Sets the opacity of the window. On Linux, does nothing. Out of bound number values are clamped to the [0, 1] range. win.getOpacity()​ Returns number - between 0.0 (fully transparent) and 1.0 (fully opaque). On Linux, always returns 1. win.setShape(rects) Windows Linux Experimental​ rects Rectangle[] - Sets a shape on the window. Passing an empty list reverts the window to being rectangular. Setting a window shape determines the area within the window where the system permits drawing and user interaction. Outside of the given region, no pixels will be drawn and no mouse events will be registered. Mouse events outside of the region will not be received by that window, but will fall through to whatever is behind the window. win.setThumbarButtons(buttons) Windows​ buttons ThumbarButton[] Returns boolean - Whether the buttons were added successfully Add a thumbnail toolbar with a specified set of buttons to the thumbnail image of a window in a taskbar button layout. Returns a boolean object indicates whether the thumbnail has been added successfully. The number of buttons in thumbnail toolbar should be no greater than 7 due to the limited room. Once you setup the thumbnail toolbar, the toolbar cannot be removed due to the platform's limitation. But you can call the API with an empty array to clean the buttons. The buttons is an array of Button objects: Button Object icon NativeImage - The icon showing in thumbnail toolbar. click Function tooltip string (optional) - The text of the button's tooltip. flags string[] (optional) - Control specific states and behaviors of the button. By default, it is ['enabled']. The flags is an array that can include following strings: enabled - The button is active and available to the user. disabled - The button is disabled. It is present, but has a visual state indicating it will not respond to user action. dismissonclick - When the button is clicked, the thumbnail window closes immediately. nobackground - Do not draw a button border, use only the image. hidden - The button is not shown to the user. noninteractive - The button is enabled but not interactive; no pressed button state is drawn. This value is intended for instances where the button is used in a notification. win.setThumbnailClip(region) Windows​ region Rectangle - Region of the window Sets the region of the window to show as the thumbnail image displayed when hovering over the window in the taskbar. You can reset the thumbnail to be the entire window by specifying an empty region: { x: 0, y: 0, width: 0, height: 0 }. win.setThumbnailToolTip(toolTip) Windows​ toolTip string Sets the toolTip that is displayed when hovering over the window thumbnail in the taskbar. win.setAppDetails(options) Windows​ options Object appId string (optional) - Window's App User Model ID. It has to be set, otherwise the other options will have no effect. appIconPath string (optional) - Window's Relaunch Icon. appIconIndex Integer (optional) - Index of the icon in appIconPath. Ignored when appIconPath is not set. Default is 0. relaunchCommand string (optional) - Window's Relaunch Command. relaunchDisplayName string (optional) - Window's Relaunch Display Name. Sets the properties for the window's taskbar button. noterelaunchCommand and relaunchDisplayName must always be set together. If one of those properties is not set, then neither will be used. win.setAccentColor(accentColor) Windows​ accentColor boolean | string | null - The accent color for the window. By default, follows user preference in System Settings. To reset to system default, pass null. Sets the system accent color and highlighting of active window border. The accentColor parameter accepts the following values: Color string - Like true, but sets a custom accent color using standard CSS color formats (Hex, RGB, RGBA, HSL, HSLA, or named colors). Alpha values in RGBA/HSLA formats are ignored and the color is treated as fully opaque. true - Enable accent color highlighting for the window with the system accent color regardless of whether accent colors are enabled for windows in System Settings. false - Disable accent color highlighting for the window regardless of whether accent colors are currently enabled for windows in System Settings. null - Reset window accent color behavior to follow behavior set in System Settings. Examples: const win = new BrowserWindow({ frame: false })// Set red accent color.win.setAccentColor('#ff0000')// RGB format (alpha ignored if present).win.setAccentColor('rgba(255,0,0,0.5)')// Enable accent color, using the color specified in System Settings.win.setAccentColor(true)// Disable accent color.win.setAccentColor(false)// Reset window accent color behavior to follow behavior set in System Settings.win.setAccentColor(null) win.getAccentColor() Windows​ Returns string | boolean - the system accent color and highlighting of active window border in Hex RGB format. If a color has been set for the window that differs from the system accent color, the window accent color will be returned. Otherwise, a boolean will be returned, with true indicating that the window uses the global system accent color, and false indicating that accent color highlighting is disabled for this window. win.setIcon(icon) Windows Linux​ icon NativeImage | string Changes window icon. win.setWindowButtonVisibility(visible) macOS​ visible boolean Sets whether the window traffic light buttons should be visible. win.setAutoHideMenuBar(hide) Windows Linux​ hide boolean Sets whether the window menu bar should hide itself automatically. Once set the menu bar will only show when users press the single Alt key. If the menu bar is already visible, calling setAutoHideMenuBar(true) won't hide it immediately. win.isMenuBarAutoHide() Windows Linux​ Returns boolean - Whether menu bar automatically hides itself. win.setMenuBarVisibility(visible) Windows Linux​ visible boolean Sets whether the menu bar should be visible. If the menu bar is auto-hide, users can still bring up the menu bar by pressing the single Alt key. win.isMenuBarVisible() Windows Linux​ Returns boolean - Whether the menu bar is visible. win.isSnapped() Windows​ Returns boolean - whether the window is arranged via Snap. The window is snapped via buttons shown when the mouse is hovered over window maximize button, or by dragging it to the edges of the screen. win.setVisibleOnAllWorkspaces(visible[, options]) macOS Linux​ visible boolean options Object (optional) visibleOnFullScreen boolean (optional) macOS - Sets whether the window should be visible above fullscreen windows. skipTransformProcessType boolean (optional) macOS - Calling setVisibleOnAllWorkspaces will by default transform the process type between UIElementApplication and ForegroundApplication to ensure the correct behavior. However, this will hide the window and dock for a short time every time it is called. If your window is already of type UIElementApplication, you can bypass this transformation by passing true to skipTransformProcessType. Sets whether the window should be visible on all workspaces. noteThis API does nothing on Windows. win.isVisibleOnAllWorkspaces() macOS Linux​ Returns boolean - Whether the window is visible on all workspaces. noteThis API always returns false on Windows. win.setIgnoreMouseEvents(ignore[, options])​ ignore boolean options Object (optional) forward boolean (optional) macOS Windows - If true, forwards mouse move messages to Chromium, enabling mouse related events such as mouseleave. Only used when ignore is true. If ignore is false, forwarding is always disabled regardless of this value. Makes the window ignore all mouse events. All mouse events happened in this window will be passed to the window below this window, but if this window has focus, it will still receive keyboard events. win.setContentProtection(enable) macOS Windows​ enable boolean Prevents the window contents from being captured by other apps. On macOS it sets the NSWindow's sharingType to NSWindowSharingNone. On Windows it calls SetWindowDisplayAffinity with WDA_EXCLUDEFROMCAPTURE. For Windows 10 version 2004 and up the window will be removed from capture entirely, older Windows versions behave as if WDA_MONITOR is applied capturing a black window. win.isContentProtected() macOS Windows​ Returns boolean - whether or not content protection is currently enabled. win.setFocusable(focusable) macOS Windows​ focusable boolean Changes whether the window can be focused. On macOS it does not remove the focus from the window. win.isFocusable() macOS Windows​ Returns boolean - Whether the window can be focused. win.setParentWindow(parent)​ parent BaseWindow | null Sets parent as current window's parent window, passing null will turn current window into a top-level window. win.getParentWindow()​ Returns BaseWindow | null - The parent window or null if there is no parent. win.getChildWindows()​ Returns BaseWindow[] - All child windows. win.setAutoHideCursor(autoHide) macOS​ autoHide boolean Controls whether to hide cursor when typing. win.selectPreviousTab() macOS​ Selects the previous tab when native tabs are enabled and there are other tabs in the window. win.selectNextTab() macOS​ Selects the next tab when native tabs are enabled and there are other tabs in the window. win.showAllTabs() macOS​ Shows or hides the tab overview when native tabs are enabled. win.mergeAllWindows() macOS​ Merges all windows into one window with multiple tabs when native tabs are enabled and there is more than one open window. win.moveTabToNewWindow() macOS​ Moves the current tab into a new window if native tabs are enabled and there is more than one tab in the current window. win.toggleTabBar() macOS​ Toggles the visibility of the tab bar if native tabs are enabled and there is only one tab in the current window. win.addTabbedWindow(baseWindow) macOS​ baseWindow BaseWindow Adds a window as a tab on this window, after the tab for the window instance. win.setVibrancy(type) macOS​ type string | null - Can be titlebar, selection, menu, popover, sidebar, header, sheet, window, hud, fullscreen-ui, tooltip, content, under-window, or under-page. See the macOS documentation for more details. Adds a vibrancy effect to the window. Passing null or an empty string will remove the vibrancy effect on the window. win.setBackgroundMaterial(material) Windows​ material string auto - Let the Desktop Window Manager (DWM) automatically decide the system-drawn backdrop material for this window. This is the default. none - Don't draw any system backdrop. mica - Draw the backdrop material effect corresponding to a long-lived window. acrylic - Draw the backdrop material effect corresponding to a transient window. tabbed - Draw the backdrop material effect corresponding to a window with a tabbed title bar. This method sets the browser window's system-drawn background material, including behind the non-client area. See the Windows documentation for more details. noteThis method is only supported on Windows 11 22H2 and up. win.setWindowButtonPosition(position) macOS​ position Point | null Set a custom position for the traffic light buttons in frameless window. Passing null will reset the position to default. win.getWindowButtonPosition() macOS​ Returns Point | null - The custom position for the traffic light buttons in frameless window, null will be returned when there is no custom position. win.setTouchBar(touchBar) macOS​ touchBar TouchBar | null Sets the touchBar layout for the current window. Specifying null or undefined clears the touch bar. This method only has an effect if the machine has a touch bar. noteThe TouchBar API is currently experimental and may change or be removed in future Electron releases. win.setTitleBarOverlay(options) Windows Linux​ options Object color String (optional) - The CSS color of the Window Controls Overlay when enabled. symbolColor String (optional) - The CSS color of the symbols on the Window Controls Overlay when enabled. height Integer (optional) - The height of the title bar and Window Controls Overlay in pixels. On a Window with Window Controls Overlay already enabled, this method updates the style of the title bar overlay. On Linux, the symbolColor is automatically calculated to have minimum accessible contrast to the color if not explicitly set.
-
-```
-BaseWindow
-```
-
-**Pattern 7:** Usually you would want to use the beforeunload handler to decide whether the window should be closed, which will also be called when the window is reloaded. In Electron, returning any value other than undefined would cancel the close. For example:
-
-```
-beforeunload
-```
-
-**Pattern 8:** Changes the attachment point for sheets on macOS. By default, sheets are attached just below the window frame, but you may want to display them beneath a HTML-rendered toolbar. For example:
-
-```
-const { BaseWindow } = require('electron')const win = new BaseWindow()const toolbarRect = document.getElementById('toolbar').getBoundingClientRect()win.setSheetOffset(toolbarRect.height)
-```
-
-### Example Code Patterns
-
-**Example 1** (python):
-```python
-npm init wdio@latest ./
-```
-
-**Example 2** (python):
-```python
+# 或使用 Yarn
 yarn create wdio@latest ./
 ```
 
-**Example 3** (python):
-```python
-$ git clone git@github.com:username/electron.git$ cd electron$ git remote add upstream https://github.com/electron/electron.git$ git fetch upstream
-```
+#### 示例 2：配置 WebdriverIO
 
-**Example 4** (css):
-```css
-webContents.setWindowOpenHandler((details) => {  return {    action: 'allow',    overrideBrowserWindowOptions: {      resizable: details.features.includes('resizable=yes')    }  }})
-```
-
-**Example 5** (javascript):
 ```javascript
-process.on('unhandledRejection', () => {  process.exit(1)})
+// wdio.conf.js
+export const config = {
+    services: ['electron'],
+    capabilities: [{
+        browserName: 'electron',
+        'wdio:electronServiceOptions': {
+            appArgs: ['foo', 'bar=baz']
+        }
+    }]
+};
 ```
 
-## Reference Files
+#### 示例 3：使用 Playwright 测试
 
-This skill includes comprehensive documentation in `references/`:
+```javascript
+import { test, _electron as electron } from '@playwright/test';
 
-- **api.md** - Api documentation
-- **development.md** - Development documentation
-- **getting_started.md** - Getting Started documentation
-- **other.md** - Other documentation
-- **processes.md** - Processes documentation
-- **tutorial.md** - Tutorial documentation
+test('launch app', async () => {
+    const electronApp = await electron.launch({ args: ['.'] });
 
-Use `view` to read specific reference files when detailed information is needed.
+    // 获取应用信息
+    const isPackaged = await electronApp.evaluate(async ({ app }) => {
+        return app.isPackaged;
+    });
 
-## Working with This Skill
+    // 获取窗口截图
+    const window = await electronApp.firstWindow();
+    await window.screenshot({ path: 'intro.png' });
 
-### For Beginners
-Start with the getting_started or tutorials reference files for foundational concepts.
+    await electronApp.close();
+});
+```
 
-### For Specific Features
-Use the appropriate category reference file (api, guides, etc.) for detailed information.
+#### 示例 4：设置 CSP 头部
 
-### For Code Examples
-The quick reference section above contains common patterns extracted from the official docs.
+```javascript
+// main.js
+const session = mainWindow.webContents.session;
 
-## Resources
+session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+        responseHeaders: {
+            ...details.responseHeaders,
+            'Content-Security-Policy': [
+                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
+            ]
+        }
+    });
+});
+```
+
+#### 示例 5：处理未捕获的异常
+
+```javascript
+// 主进程
+process.on('uncaughtException', (error) => {
+    console.error('未捕获的异常:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('未处理的 Promise 拒绝:', reason);
+});
+```
+
+## 安全最佳实践（2025）
+
+### 必须启用的安全配置
+
+```javascript
+const win = new BrowserWindow({
+    webPreferences: {
+        // ✅ 必须启用
+        nodeIntegration: false,       // 禁止渲染进程直接访问 Node.js
+        contextIsolation: true,       // 隔离预加载脚本上下文
+        sandbox: true,                // 启用操作系统级别的沙箱
+        preload: path.join(__dirname, 'preload.js'),
+        webSecurity: true,            // 启用 Web 安全策略
+
+        // ❌ 禁止使用的配置
+        // nodeIntegration: true       // 永远不要在生产环境启用
+        // contextIsolation: false     // 永远不要禁用
+    }
+});
+```
+
+### 预加载脚本模式
+
+```javascript
+// preload.js - 安全的 API 暴露
+const { contextBridge, ipcRenderer } = require('electron');
+
+// 只暴露必要的 API
+contextBridge.exposeInMainWorld('electronAPI', {
+    // 白名单频道
+    sendMessage: (channel, data) => {
+        const validChannels = ['update-data', 'save-settings'];
+        if (validChannels.includes(channel)) {
+            ipcRenderer.send(channel, data);
+        }
+    },
+    onMessage: (channel, callback) => {
+        const validChannels = ['update-complete'];
+        if (validChannels.includes(channel)) {
+            ipcRenderer.on(channel, (event, ...args) => callback(...args));
+        }
+    }
+});
+```
+
+### 内容安全策略（CSP）
+
+```html
+<!-- 在 HTML 文件中设置 CSP -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               script-src 'self';
+               style-src 'self' 'unsafe-inline';
+               img-src 'self' data: https:;
+               font-src 'self';">
+```
+
+### 常见安全问题
+
+| 安全问题 | 风险 | 解决方案 |
+|---------|------|---------|
+| 禁用 contextIsolation | 预加载脚本可被网页访问 | 始终启用 `contextIsolation: true` |
+| 启用 nodeIntegration | 渲染进程可访问 Node.js API | 始终设置 `nodeIntegration: false` |
+| 直接暴露 ipcRenderer | 恶意网页可滥用 IPC | 通过 `contextBridge` 白名单暴露 |
+| 加载远程内容 | XSS 和代码注入风险 | 验证来源，使用 CSP |
+| 使用 eval() | 代码注入风险 | 避免使用，使用 JSON.parse |
+
+## IPC 通信模式
+
+### 单向消息（发送后不等待响应）
+
+```javascript
+// 主进程
+ipcMain.on('log-message', (event, message) => {
+    console.log(message);
+});
+
+// 渲染进程
+window.electronAPI.log('Hello from renderer');
+```
+
+### 双向消息（等待响应）
+
+```javascript
+// 主进程
+ipcMain.handle('fetch-data', async (event, id) => {
+    return await database.fetch(id);
+});
+
+// 渲染进程
+const data = await window.electronAPI.fetchData(123);
+```
+
+### 流式数据传输
+
+```javascript
+// 主进程
+ipcMain.on('start-stream', (event) => {
+    const stream = fs.createReadStream('large-file.txt');
+    stream.on('data', (chunk) => {
+        event.sender.send('stream-chunk', chunk);
+    });
+    stream.on('end', () => {
+        event.sender.send('stream-end');
+    });
+});
+```
+
+## 测试自动化
+
+### 使用 WebdriverIO
+
+```bash
+npm install --save-dev @wdio/electron-service
+```
+
+```javascript
+// 测试文件
+describe('Electron App', () => {
+    it('should detect keyboard input', async () => {
+        await browser.keys(['y', 'o']);
+        await expect($('keypress-count')).toHaveText('YO');
+    });
+
+    it('should trigger message modal', async () => {
+        await browser.electron.execute(
+            (electron, param1, param2) => {
+                const appWindow = electron.BrowserWindow.getFocusedWindow();
+                electron.dialog.showMessageBox(appWindow, {
+                    message: `Sum: ${param1 + param2}`
+                });
+            },
+            1, 2
+        );
+    });
+});
+```
+
+### 使用 Playwright
+
+```bash
+npm install --save-dev @playwright/test
+```
+
+```javascript
+import { test, expect, _electron as electron } from '@playwright/test';
+
+test('app test', async () => {
+    const electronApp = await electron.launch({ args: ['.'] });
+    const window = await electronApp.firstWindow();
+
+    // 测试标题
+    await expect(window).toHaveTitle(/My App/);
+
+    // 测试元素
+    const button = window.locator('button#submit');
+    await button.click();
+
+    await electronApp.close();
+});
+```
+
+## 打包与分发
+
+### 使用 electron-builder
+
+```json
+// package.json
+{
+    "build": {
+        "appId": "com.example.myapp",
+        "productName": "MyApp",
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "build/**/*",
+            "node_modules/**/*"
+        ],
+        "mac": {
+            "category": "public.app-category.productivity"
+        },
+        "win": {
+            "target": ["nsis"]
+        },
+        "linux": {
+            "target": ["AppImage", "deb"]
+        }
+    }
+}
+```
+
+```bash
+# 构建应用
+npm run build
+
+# 或使用 electron-builder
+npx electron-builder
+```
+
+### 使用 electron-forge
+
+```bash
+# 初始化项目
+npm init electron-forge@latest my-app
+
+# 构建应用
+npm run make
+
+# 运行应用
+npm start
+```
+
+## 参考文档
+
+此技能在 `references/` 目录中包含全面的文档：
+
+| 文档 | 描述 |
+|------|------|
+| **api.md** | API 完整参考 |
+| **development.md** | 开发指南 |
+| **getting_started.md** | 入门教程 |
+| **other.md** | 其他主题 |
+| **processes.md** | 进程模型详解 |
+| **tutorial.md** | 完整教程 |
+
+## 使用指南
+
+### 对于初学者
+1. 从 `getting_started.md` 开始了解基础
+2. 创建第一个 Hello World 应用
+3. 理解主进程和渲染进程的区别
+4. 学习 IPC 通信基础
+5. 实践窗口管理和原生功能
+
+### 对于安全开发
+- 始终启用 `contextIsolation` 和 `sandbox`
+- 使用预加载脚本作为安全桥梁
+- 实施严格的 IPC 频道验证
+- 定期更新 Electron 版本
+- 参考 `development.md` 中的安全章节
+
+### 对于性能优化
+- 使用懒加载减少启动时间
+- 优化 IPC 通信频率
+- 使用 BrowserWindow 的 `show: false` 预加载窗口
+- 参考 `development.md` 中的性能优化章节
+
+## 资源
 
 ### references/
-Organized documentation extracted from official sources. These files contain:
-- Detailed explanations
-- Code examples with language annotations
-- Links to original documentation
-- Table of contents for quick navigation
+从官方来源提取的组织化文档，包含：
+- 详细的 API 说明
+- 带语言标注的代码示例
+- 原始文档链接
+- 快速导航目录
 
 ### scripts/
-Add helper scripts here for common automation tasks.
+添加用于常见自动化任务的辅助脚本。
 
 ### assets/
-Add templates, boilerplate, or example projects here.
+添加模板、样板代码或示例项目。
 
-## Notes
+## 注意事项
 
-- This skill was automatically generated from official documentation
-- Reference files preserve the structure and examples from source docs
-- Code examples include language detection for better syntax highlighting
-- Quick reference patterns are extracted from common usage examples in the docs
+- 此技能从官方文档自动生成
+- 安全配置对生产环境至关重要
+- IPC 通信需要严格的频道验证
+- 定期更新以获取安全补丁
 
-## Updating
+## 更新说明
 
-To refresh this skill with updated documentation:
-1. Re-run the scraper with the same configuration
-2. The skill will be rebuilt with the latest information
+刷新此技能的文档：
+1. 使用相同配置重新运行爬虫
+2. 技能将使用最新信息重建
+
+## 最新特性 (2025)
+
+### setWindowOpenHandler API
+
+**主进程窗口创建控制:**
+```javascript
+const mainWindow = new BrowserWindow();
+
+// 控制新窗口的创建
+mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url === 'about:blank') {
+        return {
+            action: 'allow',
+            overrideBrowserWindowOptions: {
+                frame: false,
+                fullscreenable: false,
+                backgroundColor: 'black',
+                webPreferences: {
+                    preload: 'my-child-window-preload-script.js'
+                }
+            }
+        };
+    }
+    return { action: 'deny' };
+});
+```
+
+**技术说明:**
+- 安全地控制窗口打开行为
+- 可以覆盖 BrowserWindow 构造选项
+- 支持自定义安全配置
+- 推荐用于防止意外窗口打开
+
+### 安全的 contextBridge 模式 (2025 推荐)
+
+**正确的 IPC API 暴露方式:**
+```javascript
+// preload.js - 推荐模式
+const { contextBridge, ipcRenderer } = require('electron');
+
+// ✅ 好的做法 - 只暴露特定方法
+contextBridge.exposeInMainWorld('myAPI', {
+    loadPreferences: () => ipcRenderer.invoke('load-prefs')
+});
+
+// ❌ 坏的做法 - 暴露过多权限
+contextBridge.exposeInMainWorld('electronAPI', {
+    on: ipcRenderer.on  // 危险！暴露了事件对象
+});
+
+// ❌ 同样不好的做法
+contextBridge.exposeInMainWorld('electronAPI', {
+    onUpdateCounter: (callback) => ipcRenderer.on('update-counter', callback)
+});
+
+// ✅ 正确的做法 - 只传递数据
+contextBridge.exposeInMainWorld('electronAPI', {
+    onUpdateCounter: (callback) => ipcRenderer.on('update-counter', (_event, value) => callback(value))
+});
+```
+
+### MessageChannelMain 高级通信
+
+**主进程端通道通信:**
+```javascript
+const { BrowserWindow, MessageChannelMain } = require('electron');
+
+const w = new BrowserWindow();
+const { port1, port2 } = new MessageChannelMain();
+
+// 将 port2 发送到渲染进程
+w.webContents.postMessage('port', null, [port2]);
+
+// 在主进程中使用 port1 发送消息
+port1.postMessage({ some: 'message' });
+```
+
+**渲染进程接收:**
+```javascript
+const { ipcRenderer } = require('electron');
+
+ipcRenderer.on('port', (e) => {
+    // e.ports 是随此消息发送的端口列表
+    e.ports[0].onmessage = (messageEvent) => {
+        console.log(messageEvent.data);
+    };
+});
+```
+
+### utilityProcess 进程管理
+
+**创建子进程:**
+```javascript
+const { utilityProcess, MessageChannelMain } = require('electron');
+
+// 创建具有 Node.js 的子进程
+const child = utilityProcess.fork(path.join(__dirname, 'worker.js'));
+
+// 发送消息
+child.postMessage({ message: 'hello' });
+
+// 监听事件
+child.on('spawn', () => console.log('Process spawned'));
+child.on('error', (error) => console.error('Process error:', error));
+child.on('exit', (code) => console.log('Process exited with code:', code));
+```
+
+**子进程代码 (worker.js):**
+```javascript
+process.parentPort.on('message', (e) => {
+    console.log('Received:', e.data);
+    process.parentPort.postMessage({ reply: 'ack' });
+});
+```
+
+## 版本注意事项 (2025)
+
+### Electron 39.x/38.x 更新
+
+**破坏性更改:**
+- `--host-rules` 命令行开关已弃用，改用 `--host-resolver-rules`
+- `window.open` 弹窗始终可调整大小
+- 移除了 macOS 11 支持
+- 移除了部分环境变量
+
+**迁移建议:**
+- 检查破坏性更改文档
+- 更新命令行参数
+- 测试在最新版本上的兼容性
+- 更新依赖的安全补丁
+
+## 相关资源
+
+### 官方文档
+- [Electron 官方网站](https://www.electronjs.org/)
+- [Electron 文档](https://www.electronjs.org/docs/latest/)
+- [Electron GitHub](https://github.com/electron/electron)
+
+### 安全资源
+- [Electron 安全指南](https://www.electronjs.org/docs/latest/tutorial/security)
+- [上下文隔离](https://www.electronjs.org/docs/latest/tutorial/context-isolation)
+- [IPC 通信](https://www.electronjs.org/docs/latest/tutorial/ipc)
+- [窗口打开处理](https://www.electronjs.org/docs/latest/api/window-open)
+
+### 测试资源
+- [WebdriverIO Electron Service](https://webdriver.io/docs/electron-service)
+- [Playwright Electron Guide](https://playwright.dev/docs/api/class-electron)
+
+### 中文资源
+- [2025 Electron窗口通信完全指南](https://blog.csdn.net/gitblog_00728/article/details/151853189)
+- [Electron 进程间通信](https://electron.js.cn/docs/latest/tutorial/ipc)

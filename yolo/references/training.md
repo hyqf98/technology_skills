@@ -1,3 +1,812 @@
+# YOLO11 训练完整指南
+
+本文档提供 Ultralytics YOLO11 模型的完整训练指南，涵盖从基础到高级的训练技巧。
+
+---
+
+## 目录
+1. [快速开始](#快速开始)
+2. [训练参数详解](#训练参数详解)
+3. [高级训练技巧](#高级训练技巧)
+4. [多任务训练](#多任务训练)
+5. [分布式训练](#分布式训练)
+6. [训练监控和可视化](#训练监控和可视化)
+7. [超参数调优](#超参数调优)
+8. [故障排除](#故障排除)
+
+---
+
+## 快速开始
+
+### 基础训练
+
+```python
+from ultralytics import YOLO
+
+# 1. 加载预训练模型
+model = YOLO("yolo11n.pt")
+
+# 2. 训练模型
+results = model.train(
+    data="coco8.yaml",      # 数据集配置
+    epochs=100,             # 训练轮数
+    imgsz=640,              # 输入图像尺寸
+    batch=16,               # 批次大小
+    device=0,               # GPU 设备
+)
+
+# 3. 评估模型
+metrics = model.val()
+
+# 4. 导出模型
+model.export(format="onnx")
+```
+
+### CLI 命令行训练
+
+```bash
+# 使用命令行训练
+yolo detect train data=coco8.yaml model=yolo11n.pt epochs=100 imgsz=640
+
+# 使用特定 GPU
+yolo detect train data=coco8.yaml model=yolo11n.pt device=0
+
+# 多 GPU 训练
+yolo detect train data=coco8.yaml model=yolo11n.pt device=[0,1]
+```
+
+### 不同任务的训练
+
+```python
+# 目标检测
+model = YOLO("yolo11n.pt")
+model.train(data="coco8.yaml", task="detect")
+
+# 实例分割
+model = YOLO("yolo11n-seg.pt")
+model.train(data="coco8-seg.yaml", task="segment")
+
+# 姿态估计
+model = YOLO("yolo11n-pose.pt")
+model.train(data="coco8-pose.yaml", task="pose")
+
+# 旋转目标检测
+model = YOLO("yolo11n-obb.pt")
+model.train(data="dota8.yaml", task="obb")
+
+# 图像分类
+model = YOLO("yolo11n-cls.pt")
+model.train(data="imagenet10.yaml", task="classify")
+```
+
+---
+
+## 训练参数详解
+
+### 核心训练参数
+
+```python
+from ultralytics import YOLO
+
+model = YOLO("yolo11n.pt")
+
+model.train(
+    # 数据参数
+    data="coco8.yaml",          # 数据集配置文件
+    task="detect",              # 任务类型：detect, segment, pose, obb, classify
+    
+    # 训练参数
+    epochs=100,                 # 训练轮数
+    batch=16,                   # 批次大小（自动调整）
+    imgsz=640,                  # 输入图像尺寸
+    patience=50,                # 早停耐心值
+    
+    # 优化参数
+    optimizer="auto",           # 优化器：SGD, Adam, AdamW
+    lr0=0.01,                   # 初始学习率
+    lrf=0.01,                   # 最终学习率（初始学习率的倍数）
+    momentum=0.937,             # SGD 动量
+    weight_decay=0.0005,        # 权重衰减
+    
+    # 学习率调度
+    cos_lr=True,                # 余弦学习率调度
+    warmup_epochs=3.0,          # 预热轮数
+    warmup_momentum=0.8,        # 预热动量
+    warmup_bias_lr=0.1,         # 预热偏置学习率
+    
+    # 数据增强
+    augment=True,               # 启用数据增强
+    hsv_h=0.015,                # 色调增强（±fraction）
+    hsv_s=0.7,                  # 饱和度增强（±fraction）
+    hsv_v=0.4,                  # 明度增强（±fraction）
+    degrees=0.0,                # 旋转角度（±deg）
+    translate=0.1,              # 平移（±fraction）
+    scale=0.5,                  # 缩放（gain）
+    shear=0.0,                  # 剪切角度（±deg）
+    perspective=0.0,            # 透视变换（±fraction）
+    flipud=0.0,                 # 上下翻转概率
+    fliplr=0.5,                 # 左右翻转概率
+    mosaic=1.0,                 # Mosaic 增强（概率）
+    mixup=0.0,                  # MixUp 增强（概率）
+    copy_paste=0.0,             # Copy-Paste 增强（概率）
+    
+    # 损失函数权重
+    box=7.5,                    # 边界框损失权重
+    cls=0.5,                    # 类别损失权重
+    dfl=1.5,                    # 分布焦点损失权重
+    
+    # 其他参数
+    workers=8,                  # 数据加载线程数
+    device=0,                   # 设备（CPU 或 GPU ID）
+    project="runs/train",       # 项目目录
+    name="exp",                 # 实验名称
+    exist_ok=False,             # 覆盖现有实验
+    pretrained=True,            # 使用预训练模型
+    resume=False,               # 恢复训练
+    verbose=True,               # 详细输出
+    seed=0,                     # 随机种子
+    deterministic=True,         # 确定性训练
+    single_cls=False,           # 单类别训练
+    rect=False,                 # 矩形训练
+    cos_lr=True,                # 余弦学习率
+    close_mosaic=10,            # 最后 N 个 epoch 关闭 mosaic
+    amp=True,                   # 自动混合精度
+    fraction=1.0,               # 使用数据集的 fraction
+    profile=False,              # 分析推理时间
+)
+```
+
+### 参数表格
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| **数据参数** |
+| `data` | str | - | 数据集配置文件路径 |
+| `task` | str | 'detect' | 任务类型 |
+| `imgsz` | int | 640 | 输入图像尺寸 |
+| **训练参数** |
+| `epochs` | int | 100 | 训练轮数 |
+| `batch` | int | 16 | 批次大小 |
+| `patience` | int | 50 | 早停耐心值 |
+| **优化参数** |
+| `optimizer` | str | 'auto' | 优化器类型 |
+| `lr0` | float | 0.01 | 初始学习率 |
+| `lrf` | float | 0.01 | 最终学习率因子 |
+| `momentum` | float | 0.937 | 动量 |
+| `weight_decay` | float | 0.0005 | 权重衰减 |
+| **增强参数** |
+| `augment` | bool | True | 启用数据增强 |
+| `mosaic` | float | 1.0 | Mosaic 增强概率 |
+| `mixup` | float | 0.0 | MixUp 增强概率 |
+| **其他参数** |
+| `device` | int/str | 0 | 设备 |
+| `workers` | int | 8 | 数据加载线程数 |
+| `project` | str | 'runs/train' | 项目目录 |
+| `name` | str | 'exp' | 实验名称 |
+
+---
+
+## 高级训练技巧
+
+### 1. 迁移学习
+
+```python
+from ultralytics import YOLO
+
+# 方案 1：使用预训练权重
+model = YOLO("yolo11n.pt")
+results = model.train(
+    data="custom.yaml",
+    epochs=100,
+    # 冻结骨干网络（前 10 个 epoch）
+    freeze=10,
+)
+
+# 方案 2：渐进式解冻
+model = YOLO("yolo11n.pt")
+
+# 阶段 1：冻结骨干网络
+model.train(
+    data="custom.yaml",
+    epochs=50,
+    freeze=10,  # 冻结前 10 层
+)
+
+# 阶段 2：全网络微调
+model.train(
+    data="custom.yaml",
+    epochs=50,
+    lr0=0.0001,  # 更小的学习率
+    freeze=0,
+)
+
+# 方案 3：使用不同规模的预训练模型
+model = YOLO("yolo11s.pt")  # 从更大模型开始
+results = model.train(
+    data="custom.yaml",
+    epochs=100,
+    imgsz=640,
+)
+```
+
+### 2. 数据增强策略
+
+```python
+from ultralytics import YOLO
+
+model = YOLO("yolo11n.pt")
+
+# 小数据集增强策略
+model.train(
+    data="custom.yaml",
+    epochs=200,
+    augment=True,
+    # 强化增强
+    hsv_h=0.02,
+    hsv_s=0.8,
+    hsv_v=0.5,
+    degrees=15.0,
+    translate=0.2,
+    scale=0.7,
+    shear=5.0,
+    mosaic=1.0,
+    mixup=0.15,
+    copy_paste=0.1,
+)
+
+# 大数据集增强策略
+model.train(
+    data="custom.yaml",
+    epochs=300,
+    augment=True,
+    # 适度增强
+    hsv_h=0.015,
+    hsv_s=0.7,
+    hsv_v=0.4,
+    degrees=0.0,
+    translate=0.1,
+    scale=0.5,
+    mosaic=1.0,
+    mixup=0.0,
+)
+
+# 针对小目标的增强
+model.train(
+    data="custom.yaml",
+    epochs=100,
+    # 增加小目标检测能力
+    scale=0.9,      # 更大的缩放范围
+    mosaic=1.0,     # 保持 Mosaic
+    copy_paste=0.5, # 增加 Copy-Paste
+)
+```
+
+### 3. 学习率调度
+
+```python
+from ultralytics import YOLO
+
+model = YOLO("yolo11n.pt")
+
+# 余弦学习率调度（推荐）
+model.train(
+    data="custom.yaml",
+    epochs=100,
+    cos_lr=True,      # 余弦调度
+    lr0=0.01,         # 初始学习率
+    lrf=0.01,         # 最终学习率（lr0 的 1%）
+)
+
+# 线性学习率衰减
+model.train(
+    data="custom.yaml",
+    epochs=100,
+    cos_lr=False,     # 线性衰减
+    lr0=0.01,
+    lrf=0.01,
+)
+
+# 自定义学习率调度
+import torch.optim as optim
+
+model = YOLO("yolo11n.pt")
+
+# 训练时使用自定义调度器
+results = model.train(
+    data="custom.yaml",
+    epochs=100,
+    # 在回调中实现自定义调度
+)
+```
+
+### 4. 多尺度训练
+
+```python
+from ultralytics import YOLO
+
+model = YOLO("yolo11n.pt")
+
+# 多尺度训练
+model.train(
+    data="custom.yaml",
+    epochs=100,
+    imgsz=640,        # 基础尺寸
+    # 模型会自动在 0.5x - 1.5x 范围内调整尺寸
+    scale=0.5,        # 尺度缩放范围
+)
+
+# 固定尺寸训练
+model.train(
+    data="custom.yaml",
+    epochs=100,
+    imgsz=640,
+    scale=0.0,        # 禁用尺度变化
+)
+```
+
+---
+
+## 多任务训练
+
+### 1. 联合检测和分割
+
+```python
+from ultralytics import YOLO
+
+# 实例分割模型
+model = YOLO("yolo11n-seg.pt")
+
+results = model.train(
+    data="coco8-seg.yaml",
+    epochs=100,
+    imgsz=640,
+    task="segment",
+)
+
+# 同时进行检测和分割
+for result in results:
+    boxes = result.boxes    # 检测框
+    masks = result.masks    # 分割掩码
+```
+
+### 2. 姿态估计训练
+
+```python
+from ultralytics import YOLO
+
+# 姿态估计模型
+model = YOLO("yolo11n-pose.pt")
+
+results = model.train(
+    data="coco8-pose.yaml",
+    epochs=100,
+    imgsz=640,
+    task="pose",
+    # 姿态估计特定参数
+    keypoints=17,       # 关键点数量
+    kpt_shape=(17, 3),  # 关键点形状（N, xyv）
+)
+
+# 可视化姿态估计结果
+for result in results:
+    keypoints = result.keypoints  # 关键点坐标
+```
+
+### 3. 旋转目标检测
+
+```python
+from ultralytics import YOLO
+
+# 旋转目标检测模型
+model = YOLO("yolo11n-obb.pt")
+
+results = model.train(
+    data="dota8.yaml",
+    epochs=100,
+    imgsz=640,
+    task="obb",
+    # OBB 特定参数
+    angle=0.0,          # 角度增强（±deg）
+)
+```
+
+---
+
+## 分布式训练
+
+### 1. 多 GPU 训练
+
+```python
+from ultralytics import YOLO
+
+model = YOLO("yolo11n.pt")
+
+# 多 GPU 训练（数据并行）
+model.train(
+    data="coco.yaml",
+    epochs=100,
+    device=[0, 1, 2, 3],  # 使用 4 个 GPU
+    batch=64,             # 总批次大小
+)
+
+# 自动检测所有可用 GPU
+model.train(
+    data="coco.yaml",
+    epochs=100,
+    device=-1,  # 使用所有可用 GPU
+)
+```
+
+### 2. 分布式数据并行（DDP）
+
+```python
+import torch.distributed as dist
+from ultralytics import YOLO
+
+# 初始化进程组
+dist.init_process_group(backend="nccl")
+
+# 创建模型
+model = YOLO("yolo11n.pt")
+
+# DDP 训练
+model.train(
+    data="coco.yaml",
+    epochs=100,
+    device=int(os.environ["LOCAL_RANK"]),
+)
+
+# 清理
+dist.destroy_process_group()
+```
+
+### 3. 使用 Ultralytics HUB 进行云训练
+
+```python
+from ultralytics import YOLO
+
+# 上传到 HUB 并开始训练
+model = YOLO("yolo11n.pt")
+model.train(
+    data="coco.yaml",
+    epochs=100,
+    project="my-project",
+    name="cloud-training",
+    # 自动上传到 HUB
+)
+
+# 或通过 Web 界面：https://hub.ultralytics.com
+```
+
+---
+
+## 训练监控和可视化
+
+### 1. TensorBoard 集成
+
+```python
+from ultralytics import YOLO
+
+model = YOLO("yolo11n.pt")
+
+# 训练时自动启用 TensorBoard
+model.train(
+    data="coco8.yaml",
+    epochs=100,
+    # TensorBoard 日志保存在 runs/detect/exp
+)
+
+# 启动 TensorBoard
+# tensorboard --logdir runs
+```
+
+### 2. 自定义回调
+
+```python
+from ultralytics import YOLO
+from ultralytics.callbacks import BaseCallback
+
+class CustomCallback(BaseCallback):
+    """自定义训练回调"""
+    
+    def on_train_start(self):
+        """训练开始时调用"""
+        print("训练开始！")
+        self.metric_history = []
+    
+    def on_train_end(self):
+        """训练结束时调用"""
+        print("训练完成！")
+        print(f"最佳 mAP: {max(self.metric_history):.4f}")
+    
+    def on_val_end(self):
+        """验证结束时调用"""
+        metrics = self.validator.metrics
+        map50 = metrics.box.map50
+        self.metric_history.append(map50)
+        print(f"当前 mAP50: {map50:.4f}")
+
+# 使用自定义回调
+model = YOLO("yolo11n.pt")
+model.add_callback("on_train_start", CustomCallback().on_train_start)
+model.add_callback("on_train_end", CustomCallback().on_train_end)
+model.add_callback("on_val_end", CustomCallback().on_val_end)
+
+model.train(data="coco8.yaml", epochs=100)
+```
+
+### 3. 实时监控
+
+```python
+from ultralytics import YOLO
+import time
+
+model = YOLO("yolo11n.pt")
+
+# 训练并监控进度
+results = model.train(
+    data="coco8.yaml",
+    epochs=100,
+    verbose=True,  # 详细输出
+    # 实时监控
+    plots=True,    # 生成训练图表
+    save=True,     # 保存检查点
+)
+
+# 训练完成后查看结果
+print(f"最佳 mAP50: {results.results_dict['metrics/mAP50']}")
+```
+
+---
+
+## 超参数调优
+
+### 1. 网格搜索
+
+```python
+from ultralytics import YOLO
+from itertools import product
+
+# 定义超参数搜索空间
+learning_rates = [0.001, 0.01, 0.1]
+batch_sizes = [8, 16, 32]
+optimizers = ['SGD', 'Adam', 'AdamW']
+
+# 网格搜索
+best_map = 0
+best_config = None
+
+for lr, batch, opt in product(learning_rates, batch_sizes, optimizers):
+    model = YOLO("yolo11n.pt")
+    results = model.train(
+        data="coco8.yaml",
+        epochs=50,
+        lr0=lr,
+        batch=batch,
+        optimizer=opt,
+        verbose=False,
+    )
+    
+    map50 = results.results_dict['metrics/mAP50']
+    if map50 > best_map:
+        best_map = map50
+        best_config = {'lr0': lr, 'batch': batch, 'optimizer': opt}
+        print(f"新的最佳配置: {best_config}, mAP50: {map50:.4f}")
+
+print(f"最佳配置: {best_config}")
+```
+
+### 2. 随机搜索
+
+```python
+from ultralytics import YOLO
+import random
+
+# 定义搜索空间
+search_space = {
+    'lr0': [0.001, 0.005, 0.01, 0.05, 0.1],
+    'batch': [8, 16, 32, 64],
+    'optimizer': ['SGD', 'Adam', 'AdamW'],
+    'momentum': [0.9, 0.937, 0.95],
+}
+
+# 随机搜索
+best_map = 0
+best_config = None
+n_iterations = 20
+
+for i in range(n_iterations):
+    config = {
+        key: random.choice(values)
+        for key, values in search_space.items()
+    }
+    
+    model = YOLO("yolo11n.pt")
+    results = model.train(
+        data="coco8.yaml",
+        epochs=50,
+        **config,
+        verbose=False,
+    )
+    
+    map50 = results.results_dict['metrics/mAP50']
+    if map50 > best_map:
+        best_map = map50
+        best_config = config
+        print(f"迭代 {i+1}: 新的最佳配置, mAP50: {map50:.4f}")
+```
+
+### 3. 使用遗传算法调优
+
+```python
+from ultralytics import YOLO
+from ultralytics.hyper import tune
+
+# 自动超参数调优
+model = YOLO("yolo11n.pt")
+
+# 使用遗传算法
+tune_results = tune(
+    model=model,
+    data="coco8.yaml",
+    iterations=300,  # 最大迭代次数
+    optimizer="AdamW",
+    plots=True,
+    save=True,
+)
+```
+
+---
+
+## 故障排除
+
+### 常见问题及解决方案
+
+#### 1. 训练不稳定
+
+```python
+# 问题：损失函数震荡或发散
+# 解决方案：降低学习率和使用预训练权重
+
+model = YOLO("yolo11n.pt")
+
+model.train(
+    data="custom.yaml",
+    epochs=100,
+    # 降低学习率
+    lr0=0.001,           # 更小的初始学习率
+    lrf=0.01,            # 更小的最终学习率
+    # 使用预训练权重
+    pretrained=True,
+    # 增加预热
+    warmup_epochs=5.0,
+    warmup_momentum=0.9,
+    # 使用权重衰减
+    weight_decay=0.001,
+)
+```
+
+#### 2. 过拟合
+
+```python
+# 问题：训练集表现好，验证集表现差
+# 解决方案：增强数据正则化
+
+model = YOLO("yolo11n.pt")
+
+model.train(
+    data="custom.yaml",
+    epochs=100,
+    # 增加数据增强
+    augment=True,
+    mosaic=1.0,
+    mixup=0.2,
+    copy_paste=0.2,
+    # 增加正则化
+    weight_decay=0.001,
+    dropout=0.1,
+    # 早停
+    patience=20,
+)
+```
+
+#### 3. 欠拟合
+
+```python
+# 问题：训练集和验证集表现都不好
+# 解决方案：增加模型容量和训练时间
+
+model = YOLO("yolo11m.pt")  # 使用更大的模型
+
+model.train(
+    data="custom.yaml",
+    epochs=300,  # 增加训练轮数
+    # 减少正则化
+    weight_decay=0.0001,
+    # 调整学习率
+    lr0=0.01,
+)
+```
+
+#### 4. 内存不足
+
+```python
+# 问题：GPU 内存不足
+# 解决方案：减少批次大小或使用梯度累积
+
+model = YOLO("yolo11n.pt")
+
+# 方案 1：减少批次大小
+model.train(
+    data="custom.yaml",
+    epochs=100,
+    batch=8,  # 减少批次大小
+)
+
+# 方案 2：使用梯度累积
+model.train(
+    data="custom.yaml",
+    epochs=100,
+    batch=8,
+    accumulate=4,  # 累积 4 个批次
+    # 实际批次大小 = 8 * 4 = 32
+)
+
+# 方案 3：使用混合精度训练
+model.train(
+    data="custom.yaml",
+    epochs=100,
+    amp=True,  # 自动混合精度
+    half=True,  # FP16
+)
+```
+
+#### 5. 类别不平衡
+
+```python
+# 问题：某些类别检测效果差
+# 解决方案：使用类别权重和数据重采样
+
+model = YOLO("yolo11n.pt")
+
+# 方案 1：调整类别损失权重
+model.train(
+    data="custom.yaml",
+    epochs=100,
+    cls=1.0,  # 增加类别损失权重
+)
+
+# 方案 2：使用重采样数据集
+# 在数据集准备阶段重采样少数类别
+```
+
+---
+
+## 总结
+
+本文档提供了 YOLO11 训练的完整指南，涵盖：
+
+1. **快速开始**：基础训练和 CLI 命令
+2. **训练参数**：详细的参数说明和配置
+3. **高级技巧**：迁移学习、数据增强、学习率调度
+4. **多任务训练**：检测、分割、姿态估计
+5. **分布式训练**：多 GPU 和 DDP 训练
+6. **监控可视化**：TensorBoard 和自定义回调
+7. **超参数调优**：网格搜索、随机搜索、遗传算法
+8. **故障排除**：常见问题的解决方案
+
+通过遵循这些指南，您可以高效地训练高性能的 YOLO11 模型。
+
+**相关资源：**
+- [Ultralytics 文档](https://docs.ultralytics.com)
+- [YOLO11 模型文档](./models.md)
+- [数据集管理](./datasets.md)
+- [部署指南](./deployment.md)
+
+---
+
+*以下为原始训练参考文档，保留了完整的 API 文档和示例。*
+
 # Yolo - Training
 
 **Pages:** 270

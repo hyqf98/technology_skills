@@ -1,121 +1,121 @@
 ---
-title: Bubble
+title: 气泡组件
 ---
 
 ::: warning
-`Version 1.1.6` inherits the typewriter's fog effect. Please update to try it out.
+`版本 1.1.6` 新增打字机雾化效果继承。请更新版本体验。
 
-🐵 Last updated: `2025-04-13`
+🐵 最后更新时间：`2025-04-13`
 :::
 
-## Introduction
+## 简介
 
-`Bubble` is a chat bubble component, commonly used in chat scenarios. It can display conversation content, supports custom avatars, headers, content, footers, and has typing effects and loading state display. The component has built-in `Typewriter` component that can achieve text typing animation effects.
+`Bubble` 是一个聊天气泡组件，常用于聊天对话场景。可以展示对话内容，支持自定义头像、头部、内容、底部，并具有打字机效果和加载状态展示。组件内置 `Typewriter` 组件，可实现文本打字机动画效果。
 
-## Code Examples
+## 代码示例
 
-### Basic Usage
+### 基础用法
 
 <demo src="./demos/content.vue"></demo>
 
-### Avatar and Placement
+### 头像和位置
 
 <demo src="./demos/avatar-and-placement.vue"></demo>
 
-### Header and Footer
+### 头部和底部
 
 <demo src="./demos/header-and-footer.vue"></demo>
 
-### Loading State
+### 加载状态
 
 <demo src="./demos/loading.vue"></demo>
 
-### Typewriter Configuration
+### 打字机配置
 
 <demo src="./demos/typing.vue"></demo>
 
-### Enable Markdown Rendering
+### 启用 Markdown 渲染
 
 <demo src="./demos/is-markdown.vue"></demo>
 
-### Inherit Typewriter Charts and MD Styles
+### 继承打字机图表和 MD 样式
 
 <demo src="./demos/cssAndMermaid.vue"></demo>
 
-### Fog Effect
+### 雾化效果
 
 <demo src="./demos/is-fog.vue"></demo>
 
-### Custom Content
+### 自定义内容
 
 <demo src="./demos/content-customize.vue"></demo>
 
-### Variants and Shapes
+### 变体和形状
 
 <demo src="./demos/variant-and-shape.vue"></demo>
 
-### Control Typing
+### 控制打字机
 
 <demo src="./demos/customized.vue"></demo>
 
-## Properties
+## 属性
 
-| <div style="width: 130px">Property Name</div> |       Type        | Default  | Description                                                                                                                                                                                 |
-| :-------------------------------------------- | :---------------: | :------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `content`                                     |      String       |    ''    | Text content to display inside the bubble                                                                                                                                                   |
-| `placement`                                   |      String       | 'start'  | Bubble position, options are `'start'` or `'end'`, representing left and right sides respectively.                                                                                          |
-| `avatar`                                      |      String       |    ''    | Image URL for the bubble avatar                                                                                                                                                             |
-| `loading`                                     |      Boolean      |  false   | Whether to show loading state. When `true`, loading state will be displayed inside the bubble.                                                                                              |
-| `shape`                                       |      String       |   null   | Bubble shape, options are `'round'` (rounded corners) or `'corner'` (angular).                                                                                                              |
-| `variant`                                     |      String       | 'filled' | Bubble style variant, options are `'filled'` (filled), `'borderless'` (no border), `'outlined'` (outline), `'shadow'` (shadow).                                                             |
-| `noStyle`                                     |      Boolean      |  false   | Whether to remove styles, when `true`, removes built-in `padding` and `background color` from the bubble                                                                                    |
-| `isMarkdown`                                  |      Boolean      |  false   | Whether to process `content` as Markdown format.                                                                                                                                            |
-| `typing`                                      | Boolean \| Object |  false   | Whether to enable typing effect. If object, can set `step` (characters rendered each time) and `suffix` (typing cursor suffix content). `interval` represents typing interval time in `ms`. |
-| `maxWidth`                                    |      String       | '500px'  | Maximum width of bubble content.                                                                                                                                                            |
-| `avatar-size`                                 |      String       |    ''    | Set avatar placeholder size                                                                                                                                                                 |
-| `avatar-gap`                                  |      String       |  '12px'  | Set `gap` value between avatar and bubble                                                                                                                                                   |
-| `avatar-shape`                                |      String       |    ''    | Avatar shape, options are `'circle'` (circular) or `'square'` (square).                                                                                                                     |
-| `avatar-icon`                                 |      String       |    ''    | Avatar icon, priority higher than `avatar`, supports passing icon names like `'user'`.                                                                                                      |
-| `avatar-src-set`                              |      String       |    ''    | Set avatar image srcset attribute                                                                                                                                                           |
-| `avatar-alt`                                  |      String       |    ''    | Set avatar image alt attribute                                                                                                                                                              |
-| `avatar-fit`                                  |      String       | 'cover'  | Set avatar image `object-fit` attribute, options: `'cover'`, `'contain'`, `'fill'`, `'none'`, `'scale-down'`                                                                                |
+| 属性名        | 类型              | 默认值   | 说明                                                                                                                              |
+| ------------- | ----------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `content`     | String            | ''       | 气泡内显示的文本内容                                                                                                               |
+| `placement`   | String            | 'start'  | 气泡位置，可选值为 `'start'` 或 `'end'`，分别代表左侧和右侧                                                                       |
+| `avatar`      | String            | ''       | 气泡头像的图片 URL                                                                                                                |
+| `loading`     | Boolean           | false    | 是否显示加载状态，当为 `true` 时，气泡内会显示加载动画                                                                             |
+| `shape`       | String            | null     | 气泡形状，可选值为 `'round'`（圆角）或 `'corner'`（直角）                                                                        |
+| `variant`     | String            | 'filled' | 气泡风格变体，可选值为 `'filled'`（实心）、`'borderless'`（无边框）、`'outlined'`（轮廓）、`'shadow'`（阴影）                    |
+| `noStyle`     | Boolean           | false    | 是否移除样式，当为 `true` 时，移除气泡的内置 `padding` 和 `背景颜色`                                                              |
+| `isMarkdown`  | Boolean           | false    | 是否将 `content` 作为 Markdown 格式处理                                                                                           |
+| `typing`      | Boolean \| Object | false    | 是否启用打字机效果，如果是对象，可以设置 `step`（每次渲染的字符数）和 `suffix`（打字机光标后缀内容），`interval` 表示打字间隔时间，单位 `ms` |
+| `maxWidth`    | String            | '500px'  | 气泡内容的最大宽度                                                                                                                |
+| `avatar-size` | String            | ''       | 设置头像占位符尺寸                                                                                                                |
+| `avatar-gap`  | String            | '12px'   | 设置头像与气泡之间的 `gap` 值                                                                                                     |
+| `avatar-shape` | String           | ''       | 头像形状，可选值为 `'circle'`（圆形）或 `'square'`（方形）                                                                       |
+| `avatar-icon` | String            | ''       | 头像图标，优先级高于 `avatar`，支持传入图标名称如 `'user'`                                                                        |
+| `avatar-src-set` | String          | ''       | 设置头像图片的 srcset 属性                                                                                                        |
+| `avatar-alt`  | String            | ''       | 设置头像图片的 alt 属性                                                                                                           |
+| `avatar-fit`  | String            | 'cover'  | 设置头像图片的 `object-fit` 属性，可选值：`'cover'`、`'contain'`、`'fill'`、`'none'`、`'scale-down'`                             |
 
-## Events
+## 事件
 
-| Event Name     | Parameters     | Type     | Description                            |
-| -------------- | -------------- | -------- | -------------------------------------- |
-| `@start`       | `ref` instance | Function | Triggered when typing effect starts    |
-| `@finish`      | `ref` instance | Function | Triggered when typing effect completes |
-| `@writing`     | `ref` instance | Function | Triggered in real-time during typing   |
-| `@avatarError` | `ref` instance | Function | Triggered when avatar loading fails    |
+| 事件名       | 参数            | 类型     | 说明                     |
+| ------------ | --------------- | -------- | ------------------------ |
+| `@start`     | `ref` 实例      | Function | 打字机效果开始时触发     |
+| `@finish`    | `ref` 实例      | Function | 打字机效果完成时触发     |
+| `@writing`   | `ref` 实例      | Function | 打字机打字过程中实时触发 |
+| `@avatarError` | `ref` 实例     | Function | 头像加载失败时触发       |
 
-## Ref Instance Methods
+## Ref 实例方法
 
-| Property Name     | Type     | Description                               |
-| ----------------- | -------- | ----------------------------------------- |
-| `interrupt`       | Function | Interrupt typing.                         |
-| `continue`        | Function | Continue unfinished typing.               |
-| `restart`         | Function | Restart typing.                           |
-| `destroy`         | Function | Actively destroy Bubble component.        |
-| `renderedContent` | String   | Get rendered content of typing component. |
-| `isTyping`        | Boolean  | Whether currently typing.                 |
-| `progress`        | Number   | Typing progress, range 0 - 100.           |
+| 方法名          | 类型     | 说明                       |
+| --------------- | -------- | --------------------------- |
+| `interrupt`     | Function | 中断打字机                 |
+| `continue`      | Function | 继续未完成的打字机         |
+| `restart`       | Function | 重新开始打字机             |
+| `destroy`       | Function | 主动销毁 Bubble 组件       |
+| `renderedContent` | String   | 获取打字机组件的渲染内容   |
+| `isTyping`      | Boolean  | 是否正在打字机             |
+| `progress`      | Number   | 打字机进度，范围 0-100     |
 
-## Slots
+## 插槽
 
-| Slot Name  | Parameters | Type | Description                                 |
-| ---------- | ---------- | ---- | ------------------------------------------- |
-| `#avatar`  | -          | Slot | Custom avatar display content               |
-| `#header`  | -          | Slot | Custom bubble top display content           |
-| `#content` | -          | Slot | Custom bubble display content               |
-| `#loading` | -          | Slot | Custom bubble loading state display content |
-| `#footer`  | -          | Slot | Custom bubble bottom display content        |
+| 插槽名      | 参数 | 类型 | 说明                 |
+| ----------- | ---- | ---- | -------------------- |
+| `#avatar`   | -    | Slot | 自定义头像显示内容   |
+| `#header`   | -    | Slot | 自定义气泡顶部显示内容 |
+| `#content`  | -    | Slot | 自定义气泡显示内容   |
+| `#loading`  | -    | Slot | 自定义气泡加载状态显示内容 |
+| `#footer`   | -    | Slot | 自定义气泡底部显示内容 |
 
-## Features
+## 特性
 
-1. **Layout Direction** - Supports left alignment (`start`) and right alignment (`end`)
-2. **Content Types** - Supports plain text, Markdown, custom slot content
-3. **Loading State** - Built-in loading animation, supports custom loading content
-4. **Visual Effects** - Provides multiple shapes and variants (rounded/angular corners, filled/outlined/shadow, etc.)
-5. **Typing Animation** - Supports progressive text output effects
-6. **Flexible Slots** - Provides avatar, header, content, footer, loading state and other slots
+1. **布局方向** - 支持左对齐（`start`）和右对齐（`end`）
+2. **内容类型** - 支持纯文本、Markdown、自定义插槽内容
+3. **加载状态** - 内置加载动画，支持自定义加载内容
+4. **视觉效果** - 提供多种形状和变体（圆角/直角、实心/轮廓/阴影等）
+5. **打字机动画** - 支持文本逐字输出的打字机效果
+6. **灵活插槽** - 提供头像、头部、内容、底部、加载状态等插槽

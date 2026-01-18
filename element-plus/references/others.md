@@ -1,69 +1,76 @@
-# Element-Plus - Others
+# Element Plus - 其他组件
 
-**Pages:** 2
+**页面数：** 2
 
 ---
 
-## Watermark
+## Watermark 水印
 
-**URL:** llms-txt#watermark
+**URL：** llms-txt#watermark
 
-**Contents:**
-- Basic usage
-- Multi-line watermark
-- Image watermark
-- Custom configuration
+**内容概览：**
+- 基础用法
+- 多行水印
+- 图片水印
+- 自定义配置
 - API
-  - Attributes
-  - Font
-  - Slots
-- Vue Examples
+  - Attributes（属性）
+  - Font（字体）
+  - Slots（插槽）
+- Vue 示例
   - basic.vue
 
-Add specific text or patterns to the page.
+### 组件说明
+在页面添加特定的文本或图案作为水印，用于保护内容版权或标识文档状态。
 
-The most basic usage.
+### 基础用法
+最基本的水印使用方式，默认显示 "Element Plus" 文本。
 
-## Multi-line watermark
+### 多行水印
+通过 `content` 属性设置字符串数组来指定多行文本水印内容。
 
-Use `content` to set an array of strings to specify multi-line text watermark content.
+### 图片水印
+通过 `image` 属性指定图片地址。为确保图片清晰且不拉伸，应设置合适的宽度和高度，建议上传至少 2 倍于显示尺寸的图片。
 
-Specify the image address via `image`. To ensure that the image is high definition and not stretched, set the width and height, and upload at least twice the width and height of the logo image address.
+### 自定义配置
+通过配置自定义参数来预览水印效果。
 
-## Custom configuration
+### Attributes（属性）
 
-Preview the watermark effect by configuring custom parameters.
+| 属性名 | 说明 | 类型 | 默认值 |
+| ------ | ---- | ---- | ---- |
+| width | 水印的宽度，`content` 为字符串时默认使用其自身宽度 | ^[number] | 120 |
+| height | 水印的高度，`content` 为字符串时默认使用其自身高度 | ^[number] | 64 |
+| rotate | 绘制水印时的旋转角度，单位 `°` | ^[number] | -22 |
+| z-index | 添加的水印元素的 z-index 层级 | ^[number] | 9 |
+| image | 图片源，建议导出 2x 或 3x 图片，优先级较高 | ^[string] | — |
+| content | 水印文本内容 | ^[string]/^[object]`string[]` | Element Plus |
+| font | 文本样式 | [Font](#font) | [Font](#font) |
+| gap | 水印之间的间距 | ^[object]`[number, number]` | \[100, 100\] |
+| offset | 水印相对于容器左上角的偏移量，默认为 `gap/2` | ^[object]`[number, number]` | \[gap\[0\]/2, gap\[1\]/2\] |
 
-| Name    | Description                                                                                     | Type                          | Default                    |
-| ------- | ----------------------------------------------------------------------------------------------- | ----------------------------- | -------------------------- |
-| width   | The width of the watermark, the default value of `content` is its own width                     | ^[number]                     | 120                        |
-| height  | The height of the watermark, the default value of `content` is its own height                   | ^[number]                     | 64                         |
-| rotate  | When the watermark is drawn, the rotation Angle, unit `°`                                       | ^[number]                     | -22                        |
-| z-index | The z-index of the appended watermark element                                                   | ^[number]                     | 9                          |
-| image   | Image source, it is recommended to export 2x or 3x image, high priority                         | ^[string]                     | —                          |
-| content | Watermark text content                                                                          | ^[string]/^[object]`string[]` | Element Plus               |
-| font    | Text style                                                                                      | [Font](#font)                 | [Font](#font)              |
-| gap     | The spacing between watermarks                                                                  | ^[object]`[number, number]`   | \[100, 100\]               |
-| offset  | The offset of the watermark from the upper left corner of the container. The default is `gap/2` | ^[object]`[number, number]`   | \[gap\[0\]/2, gap\[1\]/2\] |
+### Font（字体配置）
 
-| Name              | Description   | Type                                                                                 | Default         |
-| ----------------- | ------------- | ------------------------------------------------------------------------------------ | --------------- |
-| color             | font color    | ^[string]                                                                            | rgba(0,0,0,.15) |
-| fontSize          | font size     | ^[number] / ^[string]                                                                | 16              |
-| fontWeight        | font weight   | ^[enum]`'normal' \| 'light' \| 'weight' \| number`                                   | normal          |
-| fontFamily        | font family   | ^[string]                                                                            | sans-serif      |
-| fontGap ^(2.11.5) | font gap      | ^[number]                                                                            | 3               |
-| fontStyle         | font style    | ^[enum]`'none' \| 'normal' \| 'italic' \| 'oblique'`                                 | normal          |
-| textAlign         | text align    | ^[enum]`'left' \| 'right' \| 'center' \| 'start' \| 'end' `                          | center          |
-| textBaseline      | text baseline | ^[enum]`'top' \| 'hanging' \| 'middle' \| 'alphabetic' \| 'ideographic' \| 'bottom'` | hanging         |
+| 属性名 | 说明 | 类型 | 默认值 |
+| ------ | ---- | ---- | ---- |
+| color | 字体颜色 | ^[string] | rgba(0,0,0,.15) |
+| fontSize | 字体大小 | ^[number] / ^[string] | 16 |
+| fontWeight | 字体粗细 | ^[enum]`'normal' \| 'light' \| 'weight' \| number` | normal |
+| fontFamily | 字体族 | ^[string] | sans-serif |
+| fontGap ^(2.11.5) | 字体间距 | ^[number] | 3 |
+| fontStyle | 字体样式 | ^[enum]`'none' \| 'normal' \| 'italic' \| 'oblique'` | normal |
+| textAlign | 文本对齐 | ^[enum]`'left' \| 'right' \| 'center' \| 'start' \| 'end' ` | center |
+| textBaseline | 文本基线 | ^[enum]`'top' \| 'hanging' \| 'middle' \| 'alphabetic' \| 'ideographic' \| 'bottom'` | hanging |
 
-| Name    | Description                    |
-| ------- | ------------------------------ |
-| default | container for adding watermark |
+### Slots（插槽）
 
-**Examples:**
+| 插槽名 | 说明 |
+| ------ | ---- |
+| default | 需要添加水印的容器内容 |
 
-Example 1 (vue):
+**使用示例：**
+
+示例 1 (vue) - 基础用法：
 ```vue
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
@@ -73,6 +80,7 @@ const font = reactive({
   color: 'rgba(0, 0, 0, .15)',
 })
 
+// 根据暗黑模式自动调整水印颜色
 watch(
   isDark,
   () => {
@@ -93,7 +101,7 @@ watch(
 </template>
 ```
 
-Example 2 (vue):
+示例 2 (vue) - 自定义配置：
 ```vue
 <script setup lang="ts">
 import { reactive } from 'vue'
@@ -124,7 +132,7 @@ const config = reactive({
     >
       <div class="watermark-container">
         <h1>Element Plus</h1>
-        <h2>A Vue 3 based component library for designers and developers</h2>
+        <h2>基于 Vue 3 的组件库</h2>
         <img src="/images/hamburger.png" alt="示例图片" />
       </div>
     </el-watermark>
@@ -134,37 +142,37 @@ const config = reactive({
       label-position="top"
       label-width="50px"
     >
-      <el-form-item label="Content">
+      <el-form-item label="水印内容">
         <el-input v-model="config.content" />
       </el-form-item>
-      <el-form-item label="Color">
+      <el-form-item label="字体颜色">
         <el-color-picker v-model="config.font.color" show-alpha />
       </el-form-item>
-      <el-form-item label="FontSize">
+      <el-form-item label="字体大小">
         <el-slider v-model="config.font.fontSize" />
       </el-form-item>
-      <el-form-item label="zIndex">
+      <el-form-item label="层级 z-index">
         <el-slider v-model="config.zIndex" />
       </el-form-item>
-      <el-form-item label="Rotate">
+      <el-form-item label="旋转角度">
         <el-slider v-model="config.rotate" :min="-180" :max="180" />
       </el-form-item>
-      <el-form-item label="Gap">
+      <el-form-item label="间距 gap">
         <el-space>
           <el-input-number v-model="config.gap[0]" controls-position="right" />
           <el-input-number v-model="config.gap[1]" controls-position="right" />
         </el-space>
       </el-form-item>
-      <el-form-item label="Offset">
+      <el-form-item label="偏移量 offset">
         <el-space>
           <el-input-number
             v-model="config.offset[0]"
-            placeholder="offsetLeft"
+            placeholder="左侧偏移"
             controls-position="right"
           />
           <el-input-number
             v-model="config.offset[1]"
-            placeholder="offsetTop"
+            placeholder="顶部偏移"
             controls-position="right"
           />
         </el-space>
@@ -200,7 +208,7 @@ img {
 </style>
 ```
 
-Example 3 (vue):
+示例 3 (vue) - 图片水印：
 ```vue
 <template>
   <el-watermark
@@ -213,7 +221,7 @@ Example 3 (vue):
 </template>
 ```
 
-Example 4 (vue):
+示例 4 (vue) - 多行文本水印：
 ```vue
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
@@ -237,6 +245,7 @@ watch(
 </script>
 
 <template>
+  <!-- 使用数组设置多行水印 -->
   <el-watermark :font="font" :content="['Element+', 'Element Plus']">
     <div style="height: 500px" />
   </el-watermark>
@@ -245,83 +254,85 @@ watch(
 
 ---
 
-## Divider
+## Divider 分割线
 
-**URL:** llms-txt#divider
+**URL：** llms-txt#divider
 
-**Contents:**
-- Basic usage
-- Custom content
-- dashed line
-- Vertical divider
+**内容概览：**
+- 基础用法
+- 自定义内容
+- 虚线
+- 垂直分割线
 - API
-  - Attributes
-  - Slots
-- Vue Examples
+  - Attributes（属性）
+  - Slots（插槽）
+- Vue 示例
   - basic-usage.vue
   - custom-content.vue
 
-The dividing line that separates the content.
+### 组件说明
+用于分隔内容的分割线，可以在不同段落之间创建视觉分隔。
 
-Divide the text of different paragraphs.
+### 基础用法
+分隔不同段落的文本。
 
-You can customize the content on the divider line.
+### 自定义内容
+可以在分割线上自定义显示的内容。
 
-You can set the style of divider.
+### 虚线样式
+可以设置分割线的样式为虚线或其他 CSS 边框样式。
 
-| Name             | Description                                                | Type                                                                                                                                        | Default    |
-| ---------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| direction        | Set divider's direction                                    | ^[enum]`'horizontal' \| 'vertical'`                                                                                                         | horizontal |
-| border-style     | Set the style of divider                                   | ^[enum]`'none' \| 'solid' \| 'hidden' \| 'dashed' \| ...` [css/border-style](https://developer.mozilla.org/zh-CN/docs/Web/CSS/border-style) | solid      |
-| content-position | the position of the customized content on the divider line | ^[enum]`'left' \| 'right' \| 'center' `                                                                                                     | center     |
+### 垂直分割线
+设置垂直方向的分割线。
 
-| Name    | Description                            |
-| ------- | -------------------------------------- |
-| default | customized content on the divider line |
+### Attributes（属性）
 
-### custom-content.vue
+| 属性名 | 说明 | 类型 | 默认值 |
+| ------ | ---- | ---- | ---- |
+| direction | 设置分割线的方向 | ^[enum]`'horizontal' \| 'vertical'` | horizontal |
+| border-style | 设置分割线的样式 | ^[enum]`'none' \| 'solid' \| 'hidden' \| 'dashed' \| ...` [css/border-style](https://developer.mozilla.org/zh-CN/docs/Web/CSS/border-style) | solid |
+| content-position | 自定义内容在分割线上的位置 | ^[enum]`'left' \| 'right' \| 'center' ` | center |
 
-### vertical-divider.vue
+### Slots（插槽）
 
----
-Title: Drawer
-URL: https://element-plus.org/en-US/component/drawer
----
+| 插槽名 | 说明 |
+| ------ | ---- |
+| default | 分割线上的自定义内容 |
 
-**Examples:**
+**使用示例：**
 
-Example 1 (vue):
+示例 1 (vue) - 基础用法：
 ```vue
 <template>
   <div>
     <span>
-      I sit at my window this morning where the world like a passer-by stops for
-      a moment, nods to me and goes.
+      我今早坐在窗前，世界如过客般在我面前停留片刻，
+      向我点头致意后离去。
     </span>
     <el-divider />
     <span>
-      There little thoughts are the rustle of leaves; they have their whisper of
-      joy in my mind.
+      这些微小的思绪是树叶的沙沙声；它们在我的心中
+      充满着欢乐的低语。
     </span>
   </div>
 </template>
 ```
 
-Example 2 (vue):
+示例 2 (vue) - 自定义内容：
 ```vue
 <template>
   <div>
-    <span>What you are you do not see, what you see is your shadow. </span>
-    <el-divider content-position="left">Rabindranath Tagore</el-divider>
+    <span>你看不见你自己，你所看见的只是你的影子。</span>
+    <el-divider content-position="left">泰戈尔</el-divider>
     <span>
-      My wishes are fools, they shout across thy song, my Master. Let me but
-      listen.
+      我的愿望是傻瓜，他们大声叫嚷着穿过你的歌，
+      我的主啊，让我只是倾听吧。
     </span>
     <el-divider>
       <el-icon><star-filled /></el-icon>
     </el-divider>
-    <span>I cannot choose the best. The best chooses me.</span>
-    <el-divider content-position="right">Rabindranath Tagore</el-divider>
+    <span>我不能选择那最好的。是那最好的选择我。</span>
+    <el-divider content-position="right">泰戈尔</el-divider>
   </div>
 </template>
 
@@ -330,30 +341,30 @@ import { StarFilled } from '@element-plus/icons-vue'
 </script>
 ```
 
-Example 3 (vue):
+示例 3 (vue) - 虚线样式：
 ```vue
 <template>
   <div>
-    <span>What language is thine, O sea?</span>
+    <span>大海啊，你说的是什么语言？</span>
     <el-divider border-style="dashed" />
-    <span>The language of eternal question.</span>
+    <span>永恒疑问的语言。</span>
   </div>
   <el-divider border-style="dotted" />
-  <span>What language is thy answer, O sky?</span>
+  <span>天空啊，你回答的是什么语言？</span>
   <el-divider border-style="double" />
-  <span>The language of eternal silence.</span>
+  <span>永恒沉默的语言。</span>
 </template>
 ```
 
-Example 4 (vue):
+示例 4 (vue) - 垂直分割线：
 ```vue
 <template>
   <div>
-    <span>Rain</span>
+    <span>雨</span>
     <el-divider direction="vertical" />
-    <span>Home</span>
+    <span>家</span>
     <el-divider direction="vertical" border-style="dashed" />
-    <span>Grass</span>
+    <span>草</span>
   </div>
 </template>
 ```

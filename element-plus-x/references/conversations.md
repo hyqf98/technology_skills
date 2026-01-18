@@ -1,102 +1,97 @@
 ---
-title: Conversations
+title: 会话管理组件
 ---
 
+## 简介
 
-## Introduction
+`Conversations` 是基于 Vue 3 和 Element Plus 开发的会话管理组件，支持分组展示、菜单交互、滚动加载、自定义样式等功能。适用于消息列表、文件管理、任务分组等场景，通过灵活的配置和插槽扩展满足多样化的业务需求。
 
-`Conversations` is a session management component developed based on Vue 3 and Element Plus, supporting grouped display, menu interaction, scroll loading, custom styles and other features. Suitable for message lists, file management, task grouping and other scenarios, it meets diverse business needs through flexible configuration and slot extensions.
+## 代码示例
 
-## Code Examples
-
-### Basic Usage
+### 基础用法
 
 <demo src="./demos/base.vue"></demo>
 
-### Time Grouping and Sticky Effect
+### 时间分组和粘性效果
 
 <demo src="./demos/time-grouping.vue"></demo>
 
-### Custom Group Sorting
+### 自定义分组排序
 
 <demo src="./demos/custom-group-sort.vue"></demo>
 
-### Built-in Dropdown Menu
+### 内置下拉菜单
 
 <demo src="./demos/built-in-menu.vue"></demo>
 
-### Built-in Dropdown Menu Button Type
+### 内置下拉菜单按钮类型
 
 <demo src="./demos/built-in-menu-type.vue"></demo>
 
-### Custom Menu Interaction
+### 自定义菜单交互
 
 <demo src="./demos/custom-menu.vue"></demo>
 
-### Lazy Loading Feature
+### 懒加载功能
 
 <demo src="./demos/lazy-loading.vue"></demo>
 
-### Custom Styles and Group Titles
+### 自定义样式和分组标题
 
 <demo src="./demos/absolute-custom.vue"></demo>
 
-## Properties
+## 属性
 
-| Property Name          | Type                          | Required | Default   | Description                                                                              |
-| ---------------------- | ----------------------------- | -------- | --------- | ---------------------------------------------------------------------------------------- |
-| `items`                | `ConversationItem<T>[]`       | No       | `[]`      | Session item data list, containing `label`, `group`, `disabled` and other fields         |
-| `groupable`            | `boolean \| GroupableOptions` | No       | `false`   | Whether to enable grouping, passing object can customize group sorting (`sort` function) |
-| `showBuiltInMenu`      | `boolean`                     | No       | `false`   | Whether to show built-in menu (rename, delete)                                           |
-| `loadMore`             | `() => void`                  | No       | -         | Lazy loading callback function, triggered when scrolling to bottom                       |
-| `loadMoreLoading`      | `boolean`                     | No       | `false`   | Load more state, controls loading animation display                                      |
-| `showToTopBtn`         | `boolean`                     | No       | `false`   | Whether to show back to top button                                                       |
-| `labelKey`             | `string`                      | No       | `'label'` | Session item label field name                                                            |
-| `rowKey`               | `string`                      | No       | `'id'`    | Session item unique identifier field name                                                |
-| `itemsStyle`           | `CSSProperties`               | No       | `{}`      | Session item default style                                                               |
-| `itemsHoverStyle`      | `CSSProperties`               | No       | `{}`      | Session item hover style                                                                 |
-| `itemsActiveStyle`     | `CSSProperties`               | No       | `{}`      | Session item active style                                                                |
-| `itemsMenuOpenedStyle` | `CSSProperties`               | No       | `{}`      | Session item style when menu is opened                                                   |
+| 属性名             | 类型                          | 是否必填 | 默认值   | 说明                                                                            |
+| ------------------ | ----------------------------- | -------- | -------- | ------------------------------------------------------------------------------- |
+| `items`            | `ConversationItem<T>[]`       | 否       | `[]`     | 会话项数据列表，包含 `label`、`group`、`disabled` 等字段                        |
+| `groupable`        | `boolean \| GroupableOptions` | 否       | `false`  | 是否启用分组，传入对象可自定义分组排序（`sort` 函数）                           |
+| `showBuiltInMenu`  | `boolean`                     | 否       | `false`  | 是否显示内置菜单（重命名、删除）                                                |
+| `loadMore`         | `() => void`                  | 否       | -        | 懒加载回调函数，滚动到底部时触发                                                |
+| `loadMoreLoading`  | `boolean`                     | 否       | `false`  | 加载更多状态，控制加载动画显示                                                  |
+| `showToTopBtn`     | `boolean`                     | 否       | `false`  | 是否显示返回顶部按钮                                                            |
+| `labelKey`         | `string`                      | 否       | `'label'`| 会话项标签字段名称                                                              |
+| `rowKey`           | `string`                      | 否       | `'id'`   | 会话项唯一标识字段名称                                                          |
+| `itemsStyle`       | `CSSProperties`               | 否       | `{}`     | 会话项默认样式                                                                  |
+| `itemsHoverStyle`  | `CSSProperties`               | 否       | `{}`     | 会话项悬停样式                                                                  |
+| `itemsActiveStyle` | `CSSProperties`               | 否       | `{}`     | 会话项激活样式                                                                  |
+| `itemsMenuOpenedStyle` | `CSSProperties`            | 否       | `{}`     | 会话项菜单打开时的样式                                                          |
 
-## Slots
+## 插槽
 
-| Slot Name      | Parameters                                                | Description                                                                                                |
-| -------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `#groupTitle`  | `{ group: GroupItem }`                                    | Custom group title, supports adding icons or special styles                                                |
-| `#label`       | `{ item: ConversationItem<T> }`                           | Custom session item label content, supports text overflow handling or rich text                            |
-| `#more-filled` | `{ item, isHovered, isActive, isMenuOpened, isDisabled }` | Session item right side additional content, displays status indicators (e.g.: disabled mark, action icons) |
-| `#menu`        | `{ item: ConversationItem<T>, handleOpen, handleClose }`                           | Custom menu content, supports buttons, icons or complex interactive components,`handleOpen`used to control the opening of the drop-down menu, `handleClose`used to control the closing of drop-down menus.                             |
-| `#header`      | -                                                         | Container header slot, for adding search bars, filter buttons and other custom content                     |
-| `#footer`      | -                                                         | Container footer slot, for adding pagination, statistics and other custom content                          |
+| 插槽名        | 参数                                                      | 说明                                                                                                       |
+| ------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `#groupTitle` | `{ group: GroupItem }`                                     | 自定义分组标题，支持添加图标或特殊样式                                                                      |
+| `#label`      | `{ item: ConversationItem<T> }`                           | 自定义会话项标签内容，支持文本溢出处理或富文本                                                              |
+| `#more-filled` | `{ item, isHovered, isActive, isMenuOpened, isDisabled }` | 会话项右侧附加内容，显示状态指示器（如：禁用标记、操作图标）                                                 |
+| `#menu`       | `{ item: ConversationItem<T>, handleOpen, handleClose }`   | 自定义菜单内容，支持按钮、图标或复杂交互组件，`handleOpen` 用于控制下拉菜单打开，`handleClose` 用于控制下拉菜单关闭 |
+| `#header`     | -                                                         | 容器头部插槽，用于添加搜索栏、筛选按钮等自定义内容                                                         |
+| `#footer`     | -                                                         | 容器底部插槽，用于添加分页、统计等自定义内容                                                                |
 
-## Events
+## 事件
 
-| Event          | Parameters                                                         | Description                                                                                                                                                            |
-| -------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@menuCommand` | `(command: ConversationMenuCommand, item: ConversationItem): void` | Menu command callback, supports rename, delete and other operations. If you choose custom menu, this method is disabled, you need to handle menu click logic yourself. |
-| `:loadMore`    | --                                                                 | Bind lazy loading callback, triggered when scrolling to bottom                                                                                                         |
+| 事件          | 参数                                                         | 说明                                                                                           |
+| ------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `@menuCommand` | `(command: ConversationMenuCommand, item: ConversationItem): void` | 菜单命令回调，支持重命名、删除等操作。如果选择自定义菜单，此方法将失效，需要自己处理菜单点击逻辑 |
+| `:loadMore`   | --                                                           | 绑定懒加载回调，滚动到底部时触发                                                               |
 
-## Features
+## 特性
 
-1. **Flexible Group Management**
+1. **灵活的分组管理**
+   - 根据 `group` 字段自动分组，未分组的项统一归入"未分组"标题下
+   - 支持自定义分组排序（通过 `groupable.sort` 函数），实现业务逻辑定制
+   - 分组标题粘性显示，滚动时保持导航可见性
 
-- Automatically groups by `group` field, ungrouped items are unified under "Ungrouped" title
-- Supports custom group sorting (through `groupable.sort` function), implements business logic customization
-- Group title sticky display, maintains navigation visibility when scrolling
+2. **丰富的交互支持**
+   - 内置基础菜单（重命名、删除），支持通过 `@menu-command` 监听命令回调
+   - 自定义菜单插槽，轻松扩展分享、编辑等复杂操作
+   - 会话项状态样式独立配置（默认、悬停、激活、菜单打开），视觉反馈清晰
 
-2. **Rich Interaction Support**
+3. **性能优化**
+   - 懒加载功能：滚动到底部时自动加载更多数据，减少初始渲染压力
+   - 虚拟滚动（计划中）：支持超大列表场景，提升内存使用效率
 
-- Built-in basic menu (rename, delete), supports monitoring command callbacks through `@menu-command`
-- Custom menu slots, easily extend sharing, editing and other complex operations
-- Session item state styles independently configured (default, hover, active, menu opened), clear visual feedback
-
-3. **Performance Optimization**
-
-- Lazy loading feature: automatically loads more data when scrolling to bottom, reduces initial rendering pressure
-- Virtual scrolling (planned): supports ultra-large list scenarios, improves memory usage efficiency
-
-4. **Highly Customizable**
-
-- Full style properties: customize session item appearance through `itemsStyle` series properties
-- Deep slot extensions: labels, group titles, menu content can all be completely customized through slots
-- Responsive design: supports adaptive width and scrollbar hiding, adapts to different container sizes
+4. **高度可定制**
+   - 完整的样式属性：通过 `itemsStyle` 系列属性自定义会话项外观
+   - 深度插槽扩展：标签、分组标题、菜单内容均可通过插槽完全自定义
+   - 响应式设计：支持自适应宽度和滚动条隐藏，适应不同容器尺寸

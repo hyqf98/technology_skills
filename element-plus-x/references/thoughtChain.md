@@ -1,98 +1,97 @@
 ---
-title: ThoughtChain
+title: 思想链组件
 ---
 
+## 简介
 
-## Introduction
+`ThoughtChain` 是一个用于显示 AI 思考过程的时间轴组件，支持**状态管理**、**内容展开/收起**和**动态样式配置**。通过可视化的思考步骤序列，帮助用户直观理解复杂的逻辑流程。组件内置多种状态反馈、过渡动画和扩展插槽，适用于智能对话、数据分析、流程引导等场景。
 
-`ThoughtChain` is a timeline component used to display AI thinking processes, supporting **state management**, **content expand/collapse**, and **dynamic style configuration**. Through visual thinking step sequences, it helps users intuitively understand complex logical flows. The component has built-in multiple state feedback, transition animations, and extension slots, suitable for intelligent conversations, data analysis, process guidance, and other scenarios.
+## 代码示例
 
-## Code Examples
-
-### Basic Usage
+### 基础用法
 
 <demo src="./demos/base.vue"></demo>
 
-### Dot Size Control
+### 圆点大小控制
 
 <demo src="./demos/dot-size.vue"></demo>
 
-### Max Width Control
+### 最大宽度控制
 
 <demo src="./demos/max-width.vue"></demo>
 
-### Custom Title and Content
+### 自定义标题和内容
 
 <demo src="./demos/key-label.vue"></demo>
 
-### Extension Slots
+### 扩展插槽
 
 <demo src="./demos/solt.vue"></demo>
 
-### Manual Expand State Control
+### 手动展开状态控制
 
 <demo src="./demos/handle-expand.vue"></demo>
 
 <!-- <demo src="./demos/status-key-test.vue"></demo> -->
 
-## Attributes
+## 属性
 
-- **Component Attributes**
+- **组件属性**
 
-| Parameter         | Type                          | Default        | Description                           |
-| ----------------- | ----------------------------- | -------------- | ------------------------------------- |
-| `thinkingItems`   | `Array<ThoughtChainItemBase>` | []             | Thinking items array                  |
-| `dotSize`         | 'small'/'default'/'large'     | 'default'      | Timeline dot size                     |
-| `maxWidth`        | string                        | '600px'        | Maximum width                         |
-| `lineGradient`    | boolean                       | false          | Whether to enable line color gradient |
-| `rowKey`          | string                        | 'id'           | Data item unique identifier field     |
-| `titleKey`        | string                        | 'title'        | Title field name                      |
-| `thinkTitleKey`   | string                        | 'thinkTitle'   | Thinking title field name             |
-| `thinkContentKey` | string                        | 'thinkContent' | Thinking content field name           |
+| 参数             | 类型                          | 默认值        | 说明                     |
+| ---------------- | ----------------------------- | ------------ | ------------------------ |
+| `thinkingItems`  | `Array<ThoughtChainItemBase>` | []            | 思考项数组               |
+| `dotSize`        | 'small'/'default'/'large'     | 'default'     | 时间轴圆点尺寸           |
+| `maxWidth`       | string                        | '600px'       | 最大宽度                 |
+| `lineGradient`   | boolean                       | false         | 是否启用线条颜色渐变     |
+| `rowKey`         | string                        | 'id'          | 数据项唯一标识字段       |
+| `titleKey`       | string                        | 'title'       | 标题字段名               |
+| `thinkTitleKey`  | string                        | 'thinkTitle'  | 思考标题字段名           |
+| `thinkContentKey` | string                        | 'thinkContent'| 思考内容字段名           |
 
-- **ThoughtChainItemBase** Array item type definition
+- **ThoughtChainItemBase** 数组项类型定义
 
-| Parameter         | Type                                | Default      | Description                                                    |
-| ----------------- | ----------------------------------- | ------------ | -------------------------------------------------------------- |
-| `id`              | `string \| number`                  | **Required** | Node unique identifier                                         |
-| `title`           | `string`                            | `undefined`  | Main title                                                     |
-| `thinkTitle`      | `string`                            | `undefined`  | Collapse panel title (thinking title)                          |
-| `thinkContent`    | `string`                            | `undefined`  | Detailed content displayed when expanded                       |
-| `status`          | `'loading' \| 'error' \| 'success'` | `undefined`  | Node status identifier (affects icon and color)                |
-| `isCanExpand`     | `boolean`                           | `undefined`  | Whether to allow expanding node content                        |
-| `isDefaultExpand` | `boolean`                           | `undefined`  | Whether to expand node content by default                      |
-| `isMarkdown`      | `boolean`                           | `undefined`  | Whether to enable Markdown format rendering                    |
-| `typing`          | `TypingConfig`                      | `undefined`  | Typewriter effect configuration (same as typewriter component) |
+| 参数             | 类型                                | 默认值       | 说明                                              |
+| ---------------- | ----------------------------------- | ------------ | ------------------------------------------------- |
+| `id`             | `string \| number`                  | **必填**     | 节点唯一标识符                                     |
+| `title`          | `string`                            | `undefined`  | 主标题                                             |
+| `thinkTitle`     | `string`                            | `undefined`  | 折叠面板标题（思考标题）                           |
+| `thinkContent`   | `string`                            | `undefined`  | 展开时显示的详细内容                               |
+| `status`         | `'loading' \| 'error' \| 'success'`  | `undefined`  | 节点状态标识（影响图标和颜色）                     |
+| `isCanExpand`    | `boolean`                           | `undefined`  | 是否允许展开节点内容                               |
+| `isDefaultExpand`| `boolean`                           | `undefined`  | 是否默认展开节点内容                               |
+| `isMarkdown`     | `boolean`                           | `undefined`  | 是否启用 Markdown 格式渲染                         |
+| `typing`         | `TypingConfig`                      | `undefined`  | 打字机效果配置（与打字机组件相同）                 |
 
-## Events
+## 事件
 
-| Event Name     | Parameter Type                   | Description                         |
-| -------------- | -------------------------------- | ----------------------------------- |
-| `handleExpand` | `item: ThoughtChainItemProps<T>` | Triggered when expand state changes |
+| 事件名        | 参数类型                         | 说明                   |
+| -------------- | -------------------------------- | ---------------------- |
+| `handleExpand` | `item: ThoughtChainItemProps<T>`  | 展开状态变化时触发     |
 
-## Slots
+## 插槽
 
-| Slot Name | Scope Parameters | Description              |
-| --------- | ---------------- | ------------------------ |
-| `#icon`   | \{ item \}       | Custom timeline dot icon |
+| 插槽名   | 作用域参数      | 说明                 |
+| -------- | --------------  | -------------------- |
+| `#icon`  | \{ item \}      | 自定义时间轴圆点图标 |
 
-## Core Features
+## 核心特性
 
-1. **Multi-state Visualization**
-   - Supports `loading`/`success`/`error`
-   - Automatically switches loading animations, icons, and color feedback
+1. **多状态可视化**
+   - 支持 `loading`/`success`/`error`
+   - 自动切换加载动画、图标和颜色反馈
 
-2. **Dynamic Content Management**
-   - Supports content collapse/expand (configurable default expanded items)
-   - Built-in typewriter effect (Typewriter component)
-   - Supports Markdown format rendering
+2. **动态内容管理**
+   - 支持内容折叠/展开（可配置默认展开项）
+   - 内置打字机效果（Typewriter 组件）
+   - 支持 Markdown 格式渲染
 
-3. **Flexible Style Configuration**
-   - Custom timeline width, dot size
-   - Dynamic color gradient lines
-   - CSS variable theme override
+3. **灵活样式配置**
+   - 自定义时间轴宽度、圆点尺寸
+   - 动态颜色渐变线条
+   - CSS 变量主题覆盖
 
-4. **Responsive Interaction**
-   - Smooth transition animations
-   - Supports dynamic addition/deletion of thinking items
-   - Two-way binding of expand state
+4. **响应式交互**
+   - 平滑过渡动画
+   - 支持动态添加/删除思考项
+   - 展开状态双向绑定

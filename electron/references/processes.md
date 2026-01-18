@@ -1,6 +1,6 @@
-# Electron - Processes
+# Electron - 进程
 
-**Pages:** 7
+**页数:** 7
 
 ---
 
@@ -8,30 +8,42 @@
 
 **URL:** https://www.electronjs.org/docs/latest/api/message-channel-main
 
-**Contents:**
+**内容:**
 - MessageChannelMain
-- Class: MessageChannelMain​
-  - Instance Properties​
-    - channel.port1​
-    - channel.port2​
+- 类: MessageChannelMain
+  - 实例属性
+    - channel.port1
+    - channel.port2
 
-MessageChannelMain is the main-process-side equivalent of the DOM MessageChannel object. Its singular function is to create a pair of connected MessagePortMain objects.
+**概述:**
+MessageChannelMain 是 DOM MessageChannel 对象在主进程端的等价物。它的唯一功能是创建一对连接的 MessagePortMain 对象。
 
-See the Channel Messaging API documentation for more information on using channel messaging.
+**技术说明:**
+- 用于主进程中的通道消息传递
+- 参见通道消息传递 API 文档了解更多信息
+- Electron 的内置类不能在用户代码中子类化
 
-Channel interface for channel messaging in the main process.
+**属性:**
+- `port1`: MessagePortMain 属性
+- `port2`: MessagePortMain 属性
 
-Electron's built-in classes cannot be subclassed in user code. For more information, see the FAQ.
-
-A MessagePortMain property.
-
-A MessagePortMain property.
-
-**Examples:**
-
-Example 1 (javascript):
+**使用示例:**
 ```javascript
-// Main processconst { BrowserWindow, MessageChannelMain } = require('electron')const w = new BrowserWindow()const { port1, port2 } = new MessageChannelMain()w.webContents.postMessage('port', null, [port2])port1.postMessage({ some: 'message' })// Renderer processconst { ipcRenderer } = require('electron')ipcRenderer.on('port', (e) => {  // e.ports is a list of ports sent along with this message  e.ports[0].onmessage = (messageEvent) => {    console.log(messageEvent.data)  }})
+// 主进程
+const { BrowserWindow, MessageChannelMain } = require('electron')
+const w = new BrowserWindow()
+const { port1, port2 } = new MessageChannelMain()
+w.webContents.postMessage('port', null, [port2])
+port1.postMessage({ some: 'message' })
+
+// 渲染进程
+const { ipcRenderer } = require('electron')
+ipcRenderer.on('port', (e) => {
+  // e.ports 是随此消息发送的端口列表
+  e.ports[0].onmessage = (messageEvent) => {
+    console.log(messageEvent.data)
+  }
+})
 ```
 
 ---
@@ -40,45 +52,52 @@ Example 1 (javascript):
 
 **URL:** https://www.electronjs.org/docs/latest/api/message-port-main
 
-**Contents:**
+**内容:**
 - MessagePortMain
-- Class: MessagePortMain​
-  - Instance Methods​
-    - port.postMessage(message, [transfer])​
-    - port.start()​
-    - port.close()​
-  - Instance Events​
-    - Event: 'message'​
-    - Event: 'close'​
+- 类: MessagePortMain
+  - 实例方法
+    - port.postMessage(message, [transfer])
+    - port.start()
+    - port.close()
+  - 实例事件
+    - 事件: 'message'
+    - 事件: 'close'
 
-MessagePortMain is the main-process-side equivalent of the DOM MessagePort object. It behaves similarly to the DOM version, with the exception that it uses the Node.js EventEmitter event system, instead of the DOM EventTarget system. This means you should use port.on('message', ...) to listen for events, instead of port.onmessage = ... or port.addEventListener('message', ...)
+**概述:**
+MessagePortMain 是 DOM MessagePort 对象在主进程端的等价物。它的行为与 DOM 版本类似，但使用 Node.js 的 EventEmitter 事件系统，而不是 DOM 的 EventTarget 系统。
 
-See the Channel Messaging API documentation for more information on using channel messaging.
+**技术说明:**
+- 使用 `port.on('message', ...)` 监听事件，而不是 `port.onmessage = ...`
+- MessagePortMain 是 EventEmitter
+- 主进程类：不从 'electron' 模块导出
+- 只能作为 Electron API 中其他方法的返回值使用
 
-MessagePortMain is an EventEmitter.
+**方法:**
+- `postMessage(message, [transfer])`: 从端口发送消息，可选择转移对象所有权
+- `start()`: 开始发送端口上排队的消息
+- `close()`: 断开端口连接，使其不再活动
 
-Port interface for channel messaging in the main process.
-
-Process: Main This class is not exported from the 'electron' module. It is only available as a return value of other methods in the Electron API.
-
-Sends a message from the port, and optionally, transfers ownership of objects to other browsing contexts.
-
-Starts the sending of messages queued on the port. Messages will be queued until this method is called.
-
-Disconnects the port, so it is no longer active.
-
-Emitted when a MessagePortMain object receives a message.
-
-Emitted when the remote end of a MessagePortMain object becomes disconnected.
+**事件:**
+- `'message'`: 当 MessagePortMain 对象收到消息时发出
+- `'close'`: 当 MessagePortMain 对象的远程端断开连接时发出
 
 ---
 
-## ProcessMemoryInfo Object
+## ProcessMemoryInfo 对象
 
 **URL:** https://www.electronjs.org/docs/latest/api/structures/process-memory-info
 
-**Contents:**
-- ProcessMemoryInfo Object
+**内容:**
+- ProcessMemoryInfo 对象
+
+**概述:**
+进程内存信息对象，包含进程的内存使用统计数据。
+
+**属性:**
+- `workingSetSize`: 进程的工作集大小（以字节为单位）
+- `peakWorkingSetSize`: 进程的峰值工作集大小
+- `privateBytes`: 进程的私有字节数
+- `sharedBytes`: 进程的共享字节数
 
 ---
 
@@ -86,84 +105,107 @@ Emitted when the remote end of a MessagePortMain object becomes disconnected.
 
 **URL:** https://www.electronjs.org/docs/latest/api/utility-process
 
-**Contents:**
+**内容:**
 - utilityProcess
-- Methods​
-  - utilityProcess.fork(modulePath[, args][, options])​
-- Class: UtilityProcess​
-  - Instance Methods​
-    - child.postMessage(message, [transfer])​
-    - child.kill()​
-  - Instance Properties​
-    - child.pid​
-    - child.stdout​
+- 方法
+  - utilityProcess.fork(modulePath[, args][, options])
+- 类: UtilityProcess
+  - 实例方法
+    - child.postMessage(message, [transfer])
+    - child.kill()
+  - 实例属性
+    - child.pid
+    - child.stdout
 
-utilityProcess creates a child process with Node.js and Message ports enabled. It provides the equivalent of child_process.fork API from Node.js but instead uses Services API from Chromium to launch the child process.
+**概述:**
+utilityProcess 创建一个启用了 Node.js 和消息端口的子进程。它提供 Node.js 的 `child_process.fork` API 的等价物，但使用 Chromium 的 Services API 来启动子进程。
 
-Returns UtilityProcess
+**技术说明:**
+- 只能在 app 的 ready 事件发出后调用
+- UtilityProcess 实例代表 Chromium 生成的具有 Node.js 集成的子进程
+- UtilityProcess 是 EventEmitter
 
-utilityProcess.fork can only be called after the ready event has been emitted on App.
+**方法:**
+- `fork(modulePath[, args][, options])`: 返回 UtilityProcess
+  - 创建具有 Node.js 和 Message ports 的子进程
 
-Instances of the UtilityProcess represent the Chromium spawned child process with Node.js integration.
+**实例方法:**
+- `postMessage(message, [transfer])`: 向子进程发送消息
+- `kill()`: 优雅地终止进程
 
-UtilityProcess is an EventEmitter.
+**实例属性:**
+- `pid`: 子进程的进程标识符（Integer | undefined）
+- `stdout`: 子进程的标准输出（NodeJS.ReadableStream | null）
 
-Send a message to the child process, optionally transferring ownership of zero or more MessagePortMain objects.
+**事件:**
+- `'spawn'`: 子进程成功生成后发出
+- `'error'`: 子进程需要因 V8 的不可继续错误而终止时发出
+- `'exit'`: 子进程结束后发出
+- `'message'`: 子进程使用 `process.parentPort.postMessage()` 发送消息时发出
 
-Terminates the process gracefully. On POSIX, it uses SIGTERM but will ensure the process is reaped on exit. This function returns true if the kill is successful, and false otherwise.
-
-A Integer | undefined representing the process identifier (PID) of the child process. Until the child process has spawned successfully, the value is undefined. When the child process exits, then the value is undefined after the exit event is emitted.
-
-You can use the pid to determine if the process is currently running.
-
-A NodeJS.ReadableStream | null that represents the child process's stdout. If the child was spawned with options.stdio[1] set to anything other than 'pipe', then this will be null. When the child process exits, then the value is null after the exit event is emitted.
-
-A NodeJS.ReadableStream | null that represents the child process's stderr. If the child was spawned with options.stdio[2] set to anything other than 'pipe', then this will be null. When the child process exits, then the value is null after the exit event is emitted.
-
-Emitted once the child process has spawned successfully.
-
-Emitted when the child process needs to terminate due to non continuable error from V8.
-
-No matter if you listen to the error event, the exit event will be emitted after the child process terminates.
-
-Emitted after the child process ends.
-
-Emitted when the child process sends a message using process.parentPort.postMessage().
-
-**Examples:**
-
-Example 1 (javascript):
+**使用示例:**
 ```javascript
-// Main processconst { port1, port2 } = new MessageChannelMain()const child = utilityProcess.fork(path.join(__dirname, 'test.js'))child.postMessage({ message: 'hello' }, [port1])// Child processprocess.parentPort.once('message', (e) => {  const [port] = e.ports  // ...})
-```
+// 主进程
+const { port1, port2 } = new MessageChannelMain()
+const child = utilityProcess.fork(path.join(__dirname, 'test.js'))
+child.postMessage({ message: 'hello' }, [port1])
 
-Example 2 (javascript):
-```javascript
-const child = utilityProcess.fork(path.join(__dirname, 'test.js'))console.log(child.pid) // undefinedchild.on('spawn', () => {  console.log(child.pid) // Integer})child.on('exit', () => {  console.log(child.pid) // undefined})
-```
-
-Example 3 (javascript):
-```javascript
-// Main processconst { port1, port2 } = new MessageChannelMain()const child = utilityProcess.fork(path.join(__dirname, 'test.js'))child.stdout.on('data', (data) => {  console.log(`Received chunk ${data}`)})
+// 子进程
+process.parentPort.once('message', (e) => {
+  const [port] = e.ports
+  // ...
+})
 ```
 
 ---
 
-## RenderProcessGoneDetails Object
+## RenderProcessGoneDetails 对象
 
 **URL:** https://www.electronjs.org/docs/latest/api/structures/render-process-gone-details
 
-**Contents:**
-- RenderProcessGoneDetails Object
+**内容:**
+- RenderProcessGoneDetails 对象
+
+**概述:**
+渲染进程消失详细信息对象，包含渲染进程终止的原因和详细信息。
+
+**属性:**
+- `reason`: 进程终止的原因（String）
+  - `exited`: 正常退出
+  - `killed`: 被杀死
+  - `crashed`: 崩溃
+  - `oom`: 内存不足
+  - `launch-failed`: 启动失败
+  - `integrity-check-failed`: 完整性检查失败
+- `exitCode`: 进程的退出代码（Integer）
+- `reasonString`: 人类可读的原因字符串（String）
 
 ---
 
-## ProcessMetric Object
+## ProcessMetric 对象
 
 **URL:** https://www.electronjs.org/docs/latest/api/structures/process-metric
 
-**Contents:**
-- ProcessMetric Object
+**内容:**
+- ProcessMetric 对象
+
+**概述:**
+进程指标对象，包含进程的 CPU 和内存使用信息。
+
+**属性:**
+- `pid`: 进程 ID（Integer）
+- `type`: 进程类型（String）
+  - 'Browser'
+  - 'Tab'
+  - 'Utility'
+  - 'Zygote'
+  - 'Sandbox helper'
+  - 'GPU'
+  - 'Pepper Plugin'
+  - 'Pepper Plugin Broker'
+- `name`: 进程名称（String）
+- `cpu`: CPU 使用百分比（Number）
+- `memory`: 内存使用信息（ProcessMemoryInfo）
 
 ---
 
@@ -171,99 +213,78 @@ Example 3 (javascript):
 
 **URL:** https://www.electronjs.org/docs/latest/api/process
 
-**Contents:**
+**内容:**
 - process
-- Sandbox​
-- Events​
-  - Event: 'loaded'​
-- Properties​
-  - process.defaultApp Readonly​
-  - process.isMainFrame Readonly​
-  - process.mas Readonly​
-  - process.noAsar​
-  - process.noDeprecation​
+- 沙箱
+- 事件
+  - 事件: 'loaded'
+- 属性
+  - process.defaultApp 只读
+  - process.isMainFrame 只读
+  - process.mas 只读
+  - process.noAsar
+  - process.noDeprecation
 
-Extensions to process object.
+**概述:**
+process 对象的扩展。Electron 的 process 对象从 Node.js process 对象扩展而来，添加了以下事件、属性和方法。
 
-Process: Main, Renderer
+**进程类型:**
+- 主进程 (Main)
+- 渲染进程 (Renderer)
 
-Electron's process object is extended from the Node.js process object. It adds the following events, properties, and methods:
+**技术说明:**
+- 在沙箱渲染器中，process 对象只包含 API 的子集
+- 所有统计数据以 KB 为单位报告
 
-In sandboxed renderers the process object contains only a subset of the APIs:
+**事件:**
+- `'loaded'`: Electron 已加载其内部初始化脚本并开始加载网页或主脚本时发出
 
-Emitted when Electron has loaded its internal initialization script and is beginning to load the web page or the main script.
+**属性:**
+- `defaultApp` (Boolean): 当应用作为参数传递给默认 Electron 可执行文件时为 true
+- `isMainFrame` (Boolean): 当前渲染器上下文是否为"主"渲染器框架
+- `mas` (Boolean): 对于 Mac App Store 构建为 true
+- `noAsar` (Boolean): 控制 ASAR 支持
+- `noDeprecation` (Boolean): 控制是否打印弃用警告
+- `resourcesPath` (String): 资源目录的路径
+- `sandboxed` (Boolean): 渲染进程是否被沙箱化
+- `contextIsolated` (Boolean): 当前渲染器上下文是否启用了 contextIsolation
+- `throwDeprecation` (Boolean): 控制是否将弃用警告抛出为异常
+- `traceDeprecation` (Boolean): 控制弃用警告是否包含堆栈跟踪
+- `traceProcessWarnings` (Boolean): 控制进程警告是否包含堆栈跟踪
+- `type` (String): 当前进程的类型
+  - 'browser'
+  - 'renderer'
+  - 'worker'
+- `versions.chrome` (String): Chrome 的版本字符串
+- `versions.electron` (String): Electron 的版本字符串
+- `windowsStore` (Boolean): 应用是否作为 Windows Store 应用运行
+- `contextId` (String): 当前 JavaScript 上下文的全局唯一 ID
+- `parentPort` (Electron.ParentPort | null): 与父进程通信
 
-A boolean. When the app is started by being passed as parameter to the default Electron executable, this property is true in the main process, otherwise it is undefined. For example when running the app with electron ., it is true, even if the app is packaged (isPackaged) is true. This can be useful to determine how many arguments will need to be sliced off from process.argv.
+**方法:**
+- `crash()`: 导致当前进程的主线程崩溃
+- `getCreationTime()`: 返回应用的创建时间（毫秒）
+- `getHeapStatistics()`: 返回 V8 堆统计信息的对象
+- `getBlinkMemoryInfo()`: 返回 Blink 内存信息的对象
+- `getProcessMemoryInfo()`: 返回当前进程内存使用统计信息的 Promise
+- `getSystemMemoryInfo()`: 返回整个系统内存使用统计信息的对象
+- `getSystemVersion()`: 返回主机操作系统的版本
+- `takeHeapSnapshot(filePath)`: 拍摄 V8 堆快照并保存到 filePath
+- `hang()`: 导致当前进程的主线程挂起
+- `setFdLimit(maxDescriptors)`: 将文件描述符软限制设置为 maxDescriptors
 
-A boolean, true when the current renderer context is the "main" renderer frame. If you want the ID of the current frame you should use webFrame.routingId.
-
-A boolean. For Mac App Store build, this property is true, for other builds it is undefined.
-
-A boolean that controls ASAR support inside your application. Setting this to true will disable the support for asar archives in Node's built-in modules.
-
-A boolean that controls whether or not deprecation warnings are printed to stderr. Setting this to true will silence deprecation warnings. This property is used instead of the --no-deprecation command line flag.
-
-A string representing the path to the resources directory.
-
-A boolean. When the renderer process is sandboxed, this property is true, otherwise it is undefined.
-
-A boolean that indicates whether the current renderer context has contextIsolation enabled. It is undefined in the main process.
-
-A boolean that controls whether or not deprecation warnings will be thrown as exceptions. Setting this to true will throw errors for deprecations. This property is used instead of the --throw-deprecation command line flag.
-
-A boolean that controls whether or not deprecations printed to stderr include their stack trace. Setting this to true will print stack traces for deprecations. This property is instead of the --trace-deprecation command line flag.
-
-A boolean that controls whether or not process warnings printed to stderr include their stack trace. Setting this to true will print stack traces for process warnings (including deprecations). This property is instead of the --trace-warnings command line flag.
-
-A string representing the current process's type, can be:
-
-A string representing Chrome's version string.
-
-A string representing Electron's version string.
-
-A boolean. If the app is running as a Windows Store app (appx), this property is true, for otherwise it is undefined.
-
-A string (optional) representing a globally unique ID of the current JavaScript context. Each frame has its own JavaScript context. When contextIsolation is enabled, the isolated world also has a separate JavaScript context. This property is only available in the renderer process.
-
-A Electron.ParentPort property if this is a UtilityProcess (or null otherwise) allowing communication with the parent process.
-
-The process object has the following methods:
-
-Causes the main thread of the current process crash.
-
-Returns number | null - The number of milliseconds since epoch, or null if the information is unavailable
-
-Indicates the creation time of the application. The time is represented as number of milliseconds since epoch. It returns null if it is unable to get the process creation time.
-
-Returns an object with V8 heap statistics. Note that all statistics are reported in Kilobytes.
-
-Returns an object with Blink memory information. It can be useful for debugging rendering / DOM related memory issues. Note that all values are reported in Kilobytes.
-
-Returns Promise<ProcessMemoryInfo> - Resolves with a ProcessMemoryInfo
-
-Returns an object giving memory usage statistics about the current process. Note that all statistics are reported in Kilobytes. This api should be called after app ready.
-
-Chromium does not provide residentSet value for macOS. This is because macOS performs in-memory compression of pages that haven't been recently used. As a result the resident set size value is not what one would expect. private memory is more representative of the actual pre-compression memory usage of the process on macOS.
-
-Returns an object giving memory usage statistics about the entire system. Note that all statistics are reported in Kilobytes.
-
-Returns string - The version of the host operating system.
-
-It returns the actual operating system version instead of kernel version on macOS unlike os.release().
-
-Returns boolean - Indicates whether the snapshot has been created successfully.
-
-Takes a V8 heap snapshot and saves it to filePath.
-
-Causes the main thread of the current process hang.
-
-Sets the file descriptor soft limit to maxDescriptors or the OS hard limit, whichever is lower for the current process.
-
-**Examples:**
-
-Example 1 (javascript):
+**使用示例:**
 ```javascript
-const version = process.getSystemVersion()console.log(version)// On macOS -> '10.13.6'// On Windows -> '10.0.17763'// On Linux -> '4.15.0-45-generic'
+const version = process.getSystemVersion()
+console.log(version)
+// macOS -> '10.13.6'
+// Windows -> '10.0.17763'
+// Linux -> '4.15.0-45-generic'
 ```
 
----
+**技术说明:**
+- `getProcessMemoryInfo()` 应在 app ready 后调用
+- macOS 不提供 residentSet 值，因为内存压缩
+- `getSystemVersion()` 返回实际操作系统版本，而不是内核版本
+- `contextId` 仅在渲染进程中可用
+- `takeHeapSnapshot()` 返回是否成功创建快照的布尔值

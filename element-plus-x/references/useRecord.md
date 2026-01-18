@@ -1,29 +1,28 @@
 ---
-title: useRecord
+title: useRecord Hook
 ---
 
+## 简介
 
-## Introduction
+这是一个 Hook 函数，自动调用浏览器内置 API 进行语音转文本转换，让用户快速使用语音转文本功能，并返回开始、结束、错误和加载状态等事件。方便开发者集成和实现自定义语音按钮样式。
 
-This is a hook function that automatically calls the browser's built-in API for speech-to-text conversion, allowing users to quickly use speech-to-text functionality, and returns events like start, end, error, and loading state. It's convenient for developers to integrate and implement custom voice button styles.
+结合 `sender` 输入框和 useRecord hook 函数，可以轻松实现自定义语音按钮样式。
 
-Combining the `sender` input box and useRecord hook function, you can easily implement custom voice button styles.
-
-## Code Examples
+## 代码示例
 
 <demo src="./demos/use.vue"></demo>
 
-## config Configuration
+## config 配置
 
-| Parameter | Description                        | Type                                      |
-| --------- | ---------------------------------- | ----------------------------------------- |
-| onEnd     | Callback function when speech ends | `(res: speech conversion result) => void` |
+| 参数    | 说明                 | 类型                                      |
+| ------- | -------------------- | ----------------------------------------- |
+| onEnd   | 语音结束时的回调函数 | `(res: 语音转换结果) => void`             |
 
-## Returned Hooks
+## 返回的 Hooks
 
-| Property | Description                           | Type                         |
-| -------- | ------------------------------------- | ---------------------------- |
-| start    | Trigger start speech                  | `(event:MouseEvent) => void` |
-| stop     | Trigger stop speech                   | `(event:MouseEvent) => void` |
-| loading  | Whether currently speaking            | `boolean`                    |
-| value    | Real-time text from speech conversion | `string`                     |
+| 属性   | 说明                   | 类型                          |
+| ------ | ---------------------- | ----------------------------- |
+| start  | 触发开始语音           | `(event:MouseEvent) => void`  |
+| stop   | 触发停止语音           | `(event:MouseEvent) => void`  |
+| loading| 是否正在语音           | `boolean`                     |
+| value  | 语音转换的实时文本      | `string`                      |

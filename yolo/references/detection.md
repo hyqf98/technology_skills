@@ -505,6 +505,1043 @@ results[0].show()
 
 ---
 
+---
+
+## 🎯 YOLO11 目标检测完整指南
+
+### 目录
+- [YOLO11 检测架构详解](#yolo11-检测架构详解)
+- [训练自定义检测模型](#训练自定义检测模型)
+- [数据集准备与标注](#数据集准备与标注)
+- [模型评估与优化](#模型评估与优化)
+- [部署与导出](#部署与导出)
+
+### YOLO11 检测架构详解
+
+YOLO11 在目标检测架构上进行了多项创新，相比 YOLOv8 有显著提升：
+
+#### 核心架构改进
+
+1. **C3k2 模块**：更高效的跨阶段连接，减少计算量同时保持精度
+2. **SPPF (Spatial Pyramid Pooling - Fast)**：快速空间金字塔池化，增强多尺度特征提取
+3. **改进的检测头**：优化的锚点机制和分类回归分支
+4. **更好的特征融合**：增强的 PANet 结构，提升小目标检测能力
+
+#### YOLO11 检测模型对比
+
+| 模型 | 参数量 | mAP@0.5-95 | 推理速度 (ms) | 适用场景 |
+|------|--------|------------|--------------|----------|
+| **yolo11n** | 2.6M | 37.9% | 1.5 | 移动端、边缘设备 |
+| **yolo11s** | 9.4M | 44.6% | 2.5 | 嵌入式系统、实时应用 |
+| **yolo11m** | 20.1M | 50.4% | 4.5 | 服务器、高精度需求 |
+| **yolo11l** | 25.3M | 52.1% | 6.0 | 高性能服务器 |
+| **yolo11x** | 56.9M | 53.9% | 11.0 | 云端、最高精度 |
+
+#### YOLO11 检测完整示例
+
+```python
+from ultralytics import YOLO
+import cv2
+import numpy as np
+from pathlib import Path
+
+class YOLO11Detector:
+    """YOLO11 目标检测器 - 完整的检测流程封装"""
+    
+    def __init__(self, model_path="yolo11n.pt", device="cuda"):
+        """
+        初始化 YOLO11 检测器
+        
+        Args:
+            model_path (str): 模型路径
+            device (str): 推理设备 ('cuda', 'cpu', 'mps')
+        """
+        self.model = YOLO(model_path)
+        self.device = device
+        self.model.to(device)
+        
+        # 获取模型类别名称
+        self.class_names = self.model.names
+        
+        # 预热模型
+        dummy_input = np.zeros((640, 640, 3), dtype=np.uint8)
+        _ = self.model.predict(dummy_input, verbose=False)
+    
+    def detect(self, source, conf=0.25, iou=0.45, **kwargs):
+        """
+        执行目标检测
+        
+        Args:
+            source: 输入源（图像路径、图像数组、视频路径等）
+            conf (float): 置信度阈值
+            iou (float): NMS IOU 阈值
+            **kwargs: 其他检测参数
+            
+        Returns:
+            list: 检测结果列表
+        """
+        kwargs.setdefault('conf', conf)
+        kwargs.setdefault('iou', iou)
+        kwargs.setdefault('verbose', False)
+        
+        results = self.model.predict(source, **kwargs)
+        return results
+    
+    def detect_single(self, image_path, **kwargs):
+        """单张图像检测"""
+        results = self.detect(image_path, **kwargs)
+        return results[0] if results else None
+    
+    def get_detections(self, result):
+        """
+        提取检测结果信息
+        
+        Args:
+            result: YOLO11 Results 对象
+            
+        Returns:
+            list: 检测到的目标列表，每个目标包含：
+                - class_id: 类别ID
+                - class_name: 类别名称
+                - confidence: 置信度
+                - bbox: 边界框 [x1, y1, x2, y2]
+                - center: 中心点 (x, y)
+        """
+        detections = []
+        
+        if result.boxes is not None:
+            for box in result.boxes:
+                cls_id = int(box.cls[0])
+                conf = float(box.conf[0])
+                xyxy = box.xyxy[0].cpu().numpy()
+                
+                # 计算中心点
+                x1, y1, x2, y2 = xyxy
+                center = ((x1 + x2) / 2, (y1 + y2) / 2)
+                
+                detections.append({
+                    'class_id': cls_id,
+                    'class_name': self.class_names[cls_id],
+                    'confidence': conf,
+                    'bbox': xyxy.tolist(),
+                    'center': center
+                })
+        
+        return detections
+    
+    def filter_by_class(self, result, class_names):
+        """
+        按类别过滤检测结果
+        
+        Args:
+            result: YOLO11 Results 对象
+            class_names (list): 要保留的类别名称列表
+            
+        Returns:
+            list: 过滤后的检测结果
+        """
+        all_detections = self.get_detections(result)
+        return [d for d in all_detections if d['class_name'] in class_names]
+    
+    def filter_by_confidence(self, result, min_conf=0.5):
+        """
+        按置信度过滤检测结果
+        
+        Args:
+            result: YOLO11 Results 对象
+            min_conf (float): 最小置信度阈值
+            
+        Returns:
+            list: 过滤后的检测结果
+        """
+        all_detections = self.get_detections(result)
+        return [d for d in all_detections if d['confidence'] >= min_conf]
+    
+    def count_objects(self, result):
+        """
+        统计检测结果
+        
+        Args:
+            result: YOLO11 Results 对象
+            
+        Returns:
+            dict: 各类别的数量统计
+        """
+        detections = self.get_detections(result)
+        counts = {}
+        
+        for det in detections:
+            class_name = det['class_name']
+            counts[class_name] = counts.get(class_name, 0) + 1
+        
+        return counts
+    
+    def visualize_detections(self, result, output_path=None, show_labels=True, show_conf=True):
+        """
+        可视化检测结果
+        
+        Args:
+            result: YOLO11 Results 对象
+            output_path (str, optional): 保存路径
+            show_labels (bool): 是否显示类别标签
+            show_conf (bool): 是否显示置信度
+            
+        Returns:
+            ndarray: 绘制了检测框的图像
+        """
+        annotated = result.plot(
+            labels=show_labels,
+            conf=show_conf
+        )
+        
+        if output_path:
+            cv2.imwrite(output_path, annotated)
+        
+        return annotated
+
+# 使用示例
+if __name__ == "__main__":
+    # 初始化检测器
+    detector = YOLO11Detector(model_path="yolo11n.pt", device="cuda")
+    
+    # 1. 基本检测
+    result = detector.detect_single("test.jpg")
+    if result:
+        detections = detector.get_detections(result)
+        print(f"检测到 {len(detections)} 个对象:")
+        for det in detections:
+            print(f"  - {det['class_name']}: {det['confidence']:.2f}")
+    
+    # 2. 按类别过滤（只检测车辆）
+    vehicle_classes = ['car', 'truck', 'bus', 'motorcycle']
+    vehicles = detector.filter_by_class(result, vehicle_classes)
+    print(f"\n检测到 {len(vehicles)} 个车辆")
+    
+    # 3. 统计对象数量
+    counts = detector.count_objects(result)
+    print(f"\n类别统计: {counts}")
+    
+    # 4. 可视化并保存
+    annotated = detector.visualize_detections(result, output_path="detected.jpg")
+```
+
+### 训练自定义检测模型
+
+#### YOLO11 训练参数详解
+
+| 参数 | 类型 | 默认值 | 说明 | 推荐值 |
+|------|------|--------|------|--------|
+| **data** | str | None | 数据集配置文件路径 | 必需参数 |
+| **epochs** | int | 100 | 训练轮数 | 100-300 |
+| **batch** | int | 16 | 批次大小 | 根据显存调整 |
+| **imgsz** | int | 640 | 训练图像尺寸 | 640/1280 |
+| **lr0** | float | 0.01 | 初始学习率 | 0.001-0.01 |
+| **lrf** | float | 0.01 | 最终学习率系数 | 0.01 |
+| **momentum** | float | 0.937 | SGD 动量 | 0.9-0.95 |
+| **weight_decay** | float | 0.0005 | 权重衰减 | 0.0005 |
+| **warmup_epochs** | int | 3 | 预热轮数 | 3-5 |
+| **optimizer** | str | auto | 优化器 (SGD/Adam/AdamW) | auto/AdamW |
+| **patience** | int | 50 | 早停耐心值 | 50 |
+| **save** | bool | True | 是否保存检查点 | True |
+| **device** | str | None | 训练设备 | cuda/cpu |
+| **workers** | int | 8 | 数据加载线程数 | 8-16 |
+| **project** | str | None | 项目名称 | custom_detection |
+| **name** | str | None | 实验名称 | exp_yolo11 |
+| **pretrained** | bool | True | 是否使用预训练权重 | True |
+| **augment** | bool | True | 是否使用数据增强 | True |
+| **hsv_h** | float | 0.015 | 色调增强 | 0.015 |
+| **hsv_s** | float | 0.7 | 饱和度增强 | 0.7 |
+| **hsv_v** | float | 0.4 | 明度增强 | 0.4 |
+| **degrees** | float | 0.0 | 旋转角度 | 0.0-10.0 |
+| **translate** | float | 0.1 | 平移比例 | 0.1 |
+| **scale** | float | 0.5 | 缩放比例 | 0.5-0.9 |
+| **flipud** | float | 0.0 | 上下翻转概率 | 0.0-0.5 |
+| **fliplr** | float | 0.5 | 左右翻转概率 | 0.5 |
+| **mosaic** | float | 1.0 | 马赛克增强概率 | 1.0 |
+| **mixup** | float | 0.0 | MixUp 增强概率 | 0.0-0.2 |
+
+#### 完整训练流程示例
+
+```python
+from ultralytics import YOLO
+import yaml
+from pathlib import Path
+
+class YOLO11Trainer:
+    """YOLO11 训练器 - 封装训练流程"""
+    
+    def __init__(self, model_size='n', device='cuda'):
+        """
+        初始化训练器
+        
+        Args:
+            model_size (str): 模型大小 ('n', 's', 'm', 'l', 'x')
+            device (str): 训练设备
+        """
+        self.model = YOLO(f"yolo11{model_size}.pt")
+        self.device = device
+        self.training_results = None
+    
+    def train(self, 
+              data_yaml,
+              epochs=100,
+              batch=16,
+              imgsz=640,
+              project='runs/detect',
+              name='exp',
+              **kwargs):
+        """
+        训练模型
+        
+        Args:
+            data_yaml (str): 数据集配置文件路径
+            epochs (int): 训练轮数
+            batch (int): 批次大小
+            imgsz (int): 图像尺寸
+            project (str): 项目目录
+            name (str): 实验名称
+            **kwargs: 其他训练参数
+            
+        Returns:
+            训练结果对象
+        """
+        # 设置默认参数
+        kwargs.setdefault('device', self.device)
+        kwargs.setdefault('verbose', True)
+        kwargs.setdefault('plots', True)
+        kwargs.setdefault('save', True)
+        kwargs.setdefault('pretrained', True)
+        kwargs.setdefault('augment', True)
+        kwargs.setdefault('patience', 50)
+        
+        # 训练模型
+        self.training_results = self.model.train(
+            data=data_yaml,
+            epochs=epochs,
+            batch=batch,
+            imgsz=imgsz,
+            project=project,
+            name=name,
+            **kwargs
+        )
+        
+        return self.training_results
+    
+    def resume_training(self, checkpoint_path, epochs=100):
+        """
+        从检查点恢复训练
+        
+        Args:
+            checkpoint_path (str): 检查点文件路径
+            epochs (int): 总训练轮数（包括之前的）
+        """
+        self.model = YOLO(checkpoint_path)
+        self.training_results = self.model.train(
+            epochs=epochs,
+            resume=True
+        )
+        return self.training_results
+    
+    def validate(self, data_yaml):
+        """
+        验证模型
+        
+        Args:
+            data_yaml (str): 数据集配置文件路径
+            
+        Returns:
+            验证指标
+        """
+        metrics = self.model.val(data=data_yaml)
+        return metrics
+    
+    def export_model(self, format='onnx', **kwargs):
+        """
+        导出模型
+        
+        Args:
+            format (str): 导出格式 ('onnx', 'torchscript', 'engine', etc.)
+            **kwargs: 其他导出参数
+        """
+        return self.model.export(format=format, **kwargs)
+
+# 训练示例
+if __name__ == "__main__":
+    # 初始化训练器
+    trainer = YOLO11Trainer(model_size='n', device='cuda')
+    
+    # 训练模型
+    results = trainer.train(
+        data_yaml='data.yaml',
+        epochs=150,
+        batch=16,
+        imgsz=640,
+        project='custom_detection',
+        name='vehicle_detection',
+        
+        # 优化器设置
+        optimizer='AdamW',
+        lr0=0.001,
+        lrf=0.01,
+        
+        # 数据增强
+        augment=True,
+        hsv_h=0.015,
+        hsv_s=0.7,
+        hsv_v=0.4,
+        degrees=5.0,
+        translate=0.1,
+        scale=0.5,
+        fliplr=0.5,
+        mosaic=1.0,
+        
+        # 其他设置
+        patience=50,
+        save_period=10,
+        plots=True
+    )
+    
+    # 验证模型
+    metrics = trainer.validate('data.yaml')
+    print(f"mAP50: {metrics.box.map50}")
+    print(f"mAP50-95: {metrics.box.map}")
+    
+    # 导出模型
+    trainer.export_model(format='onnx', dynamic=True, simplify=True)
+```
+
+### 数据集准备与标注
+
+#### YOLO 格式数据集结构
+
+```
+dataset/
+├── data.yaml              # 数据集配置文件
+├── train/
+│   ├── images/           # 训练图像
+│   │   ├── img1.jpg
+│   │   ├── img2.jpg
+│   │   └── ...
+│   └── labels/           # 训练标签
+│       ├── img1.txt
+│       ├── img2.txt
+│       └── ...
+├── val/
+│   ├── images/           # 验证图像
+│   └── labels/           # 验证标签
+└── test/
+    ├── images/           # 测试图像
+    └── labels/           # 测试标签
+```
+
+#### data.yaml 配置文件示例
+
+```yaml
+# 数据集路径
+path: /path/to/dataset  # 数据集根目录
+train: train/images      # 训练图像路径（相对于 path）
+val: val/images          # 验证图像路径
+test: test/images        # 测试图像路径
+
+# 类别信息
+names:
+  0: person
+  1: car
+  2: truck
+  3: bus
+  4: motorcycle
+  5: bicycle
+
+nc: 6  # 类别数量
+
+# 可选：数据集信息
+download: https://example.com/dataset.zip  # 下载链接（可选）
+```
+
+#### YOLO 标签格式说明
+
+每个图像对应的 `.txt` 文件包含所有目标的标注信息，每行一个目标：
+
+```
+<class_id> <x_center> <y_center> <width> <height>
+```
+
+其中：
+- `class_id`: 类别ID（从0开始）
+- `x_center`, `y_center`: 边界框中心点的归一化坐标（0-1）
+- `width`, `height`: 边界框的归一化宽度和高度（0-1）
+
+**示例标签文件** (`img1.txt`):
+```
+0 0.512 0.483 0.102 0.234
+1 0.721 0.345 0.156 0.289
+2 0.234 0.678 0.089 0.123
+```
+
+#### 自动数据集准备工具
+
+```python
+import cv2
+import numpy as np
+from pathlib import Path
+import shutil
+import json
+
+class DatasetPreparer:
+    """YOLO 数据集准备工具"""
+    
+    def __init__(self, output_dir="dataset"):
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(exist_ok=True)
+        
+        # 创建目录结构
+        for split in ['train', 'val', 'test']:
+            (self.output_dir / split / 'images').mkdir(parents=True, exist_ok=True)
+            (self.output_dir / split / 'labels').mkdir(parents=True, exist_ok=True)
+    
+    def split_dataset(self, images_dir, train_ratio=0.7, val_ratio=0.2, test_ratio=0.1, seed=42):
+        """
+        划分数据集
+        
+        Args:
+            images_dir (str): 图像目录
+            train_ratio (float): 训练集比例
+            val_ratio (float): 验证集比例
+            test_ratio (float): 测试集比例
+            seed (int): 随机种子
+        """
+        import random
+        random.seed(seed)
+        
+        images_dir = Path(images_dir)
+        all_images = list(images_dir.glob("*.jpg")) + list(images_dir.glob("*.png"))
+        random.shuffle(all_images)
+        
+        total = len(all_images)
+        train_end = int(total * train_ratio)
+        val_end = train_end + int(total * val_ratio)
+        
+        splits = {
+            'train': all_images[:train_end],
+            'val': all_images[train_end:val_end],
+            'test': all_images[val_end:]
+        }
+        
+        return splits
+    
+    def copy_files(self, splits, labels_dir):
+        """
+        复制文件到数据集目录
+        
+        Args:
+            splits (dict): 划分后的数据集
+            labels_dir (str): 标签目录
+        """
+        labels_dir = Path(labels_dir)
+        
+        for split_name, images in splits.items():
+            print(f"处理 {split_name} 集...")
+            for img_path in images:
+                # 复制图像
+                dst_img = self.output_dir / split_name / 'images' / img_path.name
+                shutil.copy(img_path, dst_img)
+                
+                # 复制标签
+                label_path = labels_dir / f"{img_path.stem}.txt"
+                if label_path.exists():
+                    dst_label = self.output_dir / split_name / 'labels' / f"{img_path.stem}.txt"
+                    shutil.copy(label_path, dst_label)
+    
+    def create_yaml(self, class_names, output_path=None):
+        """
+        创建 data.yaml 配置文件
+        
+        Args:
+            class_names (list): 类别名称列表
+            output_path (str, optional): 输出路径
+        """
+        if output_path is None:
+            output_path = self.output_dir / 'data.yaml'
+        
+        yaml_content = f"""# YOLO 数据集配置文件
+path: {self.output_dir.absolute()}
+train: train/images
+val: val/images
+test: test/images
+
+# 类别
+nc: {len(class_names)}
+names:
+"""
+        for idx, name in enumerate(class_names):
+            yaml_content += f"  {idx}: {name}\n"
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(yaml_content)
+        
+        print(f"配置文件已保存至: {output_path}")
+    
+    def convert_coco_to_yolo(self, coco_json_path, images_dir, output_dir, split='train'):
+        """
+        将 COCO 格式转换为 YOLO 格式
+        
+        Args:
+            coco_json_path (str): COCO JSON 文件路径
+            images_dir (str): 图像目录
+            output_dir (str): 输出目录
+            split (str): 数据集划分 ('train', 'val', 'test')
+        """
+        import json
+        
+        with open(coco_json_path, 'r') as f:
+            coco_data = json.load(f)
+        
+        # 创建类别映射
+        categories = {cat['id']: cat['name'] for cat in coco_data['categories']}
+        
+        # 创建图像ID到文件名的映射
+        images = {img['id']: img['file_name'] for img in coco_data['images']}
+        
+        # 处理每个标注
+        annotations_by_image = {}
+        for ann in coco_data['annotations']:
+            image_id = ann['image_id']
+            if image_id not in annotations_by_image:
+                annotations_by_image[image_id] = []
+            annotations_by_image[image_id].append(ann)
+        
+        # 转换并保存
+        images_dir = Path(images_dir)
+        output_labels_dir = Path(output_dir) / split / 'labels'
+        output_labels_dir.mkdir(parents=True, exist_ok=True)
+        
+        for image_id, annotations in annotations_by_image.items():
+            image_filename = images[image_id]
+            image_path = images_dir / image_filename
+            
+            if not image_path.exists():
+                continue
+            
+            # 读取图像尺寸
+            img = cv2.imread(str(image_path))
+            if img is None:
+                continue
+            img_h, img_w = img.shape[:2]
+            
+            # 转换标注
+            label_filename = Path(image_filename).stem + '.txt'
+            label_path = output_labels_dir / label_filename
+            
+            with open(label_path, 'w') as f:
+                for ann in annotations:
+                    category_id = ann['category_id']
+                    bbox = ann['bbox']  # [x, y, w, h] in COCO format
+                    
+                    # 转换为 YOLO 格式
+                    x_center = (bbox[0] + bbox[2] / 2) / img_w
+                    y_center = (bbox[1] + bbox[3] / 2) / img_h
+                    width = bbox[2] / img_w
+                    height = bbox[3] / img_h
+                    
+                    class_id = list(categories.keys()).index(category_id)
+                    
+                    f.write(f"{class_id} {x_center} {y_center} {width} {height}\n")
+        
+        print(f"转换完成: {split} 集")
+
+# 使用示例
+if __name__ == "__main__":
+    # 创建数据集准备器
+    preparer = DatasetPreparer(output_dir="vehicle_dataset")
+    
+    # 方式1: 从已有 YOLO 格式数据集划分
+    splits = preparer.split_dataset(
+        images_dir="raw_data/images",
+        train_ratio=0.7,
+        val_ratio=0.2,
+        test_ratio=0.1
+    )
+    
+    # 复制文件
+    preparer.copy_files(splits, labels_dir="raw_data/labels")
+    
+    # 创建配置文件
+    class_names = ['person', 'car', 'truck', 'bus', 'motorcycle', 'bicycle']
+    preparer.create_yaml(class_names)
+    
+    print("数据集准备完成!")
+```
+
+### 模型评估与优化
+
+#### 评估指标详解
+
+| 指标 | 说明 | 计算方式 | 目标值 |
+|------|------|----------|--------|
+| **mAP@0.5** | IOU=0.5 时的平均精度 | 所有类别 AP@0.5 的平均值 | >0.95 |
+| **mAP@0.5:0.95** | IOU从0.5到0.95的平均精度 | 多个IOU阈值的mAP平均值 | >0.50 |
+| **Precision** | 精确率 | TP / (TP + FP) | >0.80 |
+| **Recall** | 召回率 | TP / (TP + FN) | >0.80 |
+| **F1-Score** | F1分数 | 2*Precision*Recall/(Precision+Recall) | >0.80 |
+| **FPS** | 每秒帧数 | 推理速度 | >30 |
+
+#### 模型评估完整示例
+
+```python
+from ultralytics import YOLO
+import matplotlib.pyplot as plt
+import pandas as pd
+from pathlib import Path
+
+class ModelEvaluator:
+    """YOLO11 模型评估器"""
+    
+    def __init__(self, model_path):
+        self.model = YOLO(model_path)
+        self.metrics = None
+    
+    def evaluate(self, data_yaml, split='val', **kwargs):
+        """
+        评估模型
+        
+        Args:
+            data_yaml (str): 数据集配置文件
+            split (str): 评估集划分 ('val', 'test')
+            **kwargs: 其他评估参数
+        """
+        kwargs.setdefault('split', split)
+        kwargs.setdefault('verbose', True)
+        
+        self.metrics = self.model.val(data=data_yaml, **kwargs)
+        return self.metrics
+    
+    def print_metrics(self):
+        """打印评估指标"""
+        if self.metrics is None:
+            print("请先运行 evaluate()")
+            return
+        
+        print("\n" + "="*50)
+        print("模型评估结果")
+        print("="*50)
+        
+        # 整体指标
+        print(f"\n整体性能:")
+        print(f"  mAP@0.5:     {self.metrics.box.map50:.4f}")
+        print(f"  mAP@0.5:0.95: {self.metrics.box.map:.4f}")
+        print(f"  Precision:   {self.metrics.box.mp:.4f}")
+        print(f"  Recall:      {self.metrics.box.mr:.4f}")
+        
+        # 各类别指标
+        if hasattr(self.metrics, 'classes'):
+            print(f"\n各类别性能:")
+            for class_idx, class_name in self.metrics.names.items():
+                if class_idx in self.metrics.box.maps:
+                    ap = self.metrics.box.maps[class_idx]
+                    print(f"  {class_name:15s}: AP@0.5:0.95 = {ap:.4f}")
+    
+    def plot_pr_curve(self, save_path='pr_curve.png'):
+        """绘制精确率-召回率曲线"""
+        if self.metrics is None:
+            print("请先运行 evaluate()")
+            return
+        
+        # 绘制 PR 曲线
+        self.metrics.plot(pr_curve=True, save_dir=Path(save_path).parent)
+        print(f"PR 曲线已保存至: {save_path}")
+    
+    def plot_confusion_matrix(self, save_path='confusion_matrix.png'):
+        """绘制混淆矩阵"""
+        if self.metrics is None:
+            print("请先运行 evaluate()")
+            return
+        
+        self.metrics.plot(confusion_matrix=True, save_dir=Path(save_path).parent)
+        print(f"混淆矩阵已保存至: {save_path}")
+    
+    def export_metrics_to_csv(self, output_path='metrics.csv'):
+        """导出指标到 CSV 文件"""
+        if self.metrics is None:
+            print("请先运行 evaluate()")
+            return
+        
+        # 收集各类别指标
+        data = []
+        for class_idx, class_name in self.metrics.names.items():
+            if class_idx in self.metrics.box.maps:
+                data.append({
+                    'class': class_name,
+                    'ap': self.metrics.box.maps[class_idx]
+                })
+        
+        df = pd.DataFrame(data)
+        df.to_csv(output_path, index=False)
+        print(f"指标已导出至: {output_path}")
+        
+        return df
+    
+    def compare_models(self, model_paths, data_yaml):
+        """
+        比较多个模型性能
+        
+        Args:
+            model_paths (list): 模型路径列表
+            data_yaml (str): 数据集配置文件
+            
+        Returns:
+            DataFrame: 比较结果
+        """
+        results = []
+        
+        for model_path in model_paths:
+            print(f"\n评估模型: {model_path}")
+            
+            # 加载模型
+            model = YOLO(model_path)
+            
+            # 评估
+            metrics = model.val(data=data_yaml, verbose=False)
+            
+            # 记录结果
+            results.append({
+                'model': Path(model_path).stem,
+                'mAP@0.5': metrics.box.map50,
+                'mAP@0.5:0.95': metrics.box.map,
+                'Precision': metrics.box.mp,
+                'Recall': metrics.box.mr
+            })
+        
+        # 创建 DataFrame
+        df = pd.DataFrame(results)
+        df = df.sort_values('mAP@0.5:0.95', ascending=False)
+        
+        print("\n模型比较结果:")
+        print(df.to_string(index=False))
+        
+        return df
+
+# 使用示例
+if __name__ == "__main__":
+    # 初始化评估器
+    evaluator = ModelEvaluator("runs/detect/train/weights/best.pt")
+    
+    # 评估模型
+    metrics = evaluator.evaluate(data_yaml="data.yaml")
+    
+    # 打印指标
+    evaluator.print_metrics()
+    
+    # 绘制曲线
+    evaluator.plot_pr_curve()
+    evaluator.plot_confusion_matrix()
+    
+    # 导出指标
+    evaluator.export_metrics_to_csv("metrics.csv")
+    
+    # 比较多个模型
+    models = [
+        "yolo11n.pt",
+        "yolo11s.pt",
+        "runs/detect/train/weights/best.pt"
+    ]
+    comparison = evaluator.compare_models(models, "data.yaml")
+```
+
+### 部署与导出
+
+#### 模型导出格式对比
+
+| 格式 | 文件大小 | 推理速度 | 精度损失 | 跨平台 | 适用场景 |
+|------|----------|----------|----------|--------|----------|
+| **PyTorch (.pt)** | 大 | 中 | 无 | ❌ | 训练、开发 |
+| **ONNX (.onnx)** | 中 | 快 | 极小 | ✅ | 生产部署 |
+| **TensorRT (.engine)** | 中 | 最快 | 小 | ❌ | NVIDIA GPU |
+| **CoreML (.mlmodel)** | 中 | 快 | 小 | ✅ | Apple 设备 |
+| **TFLite (.tflite)** | 小 | 快 | 小 | ✅ | 移动端 |
+| **OpenVINO (.xml)** | 中 | 快 | 小 | ✅ | Intel CPU |
+
+#### 模型导出完整示例
+
+```python
+from ultralytics import YOLO
+from pathlib import Path
+
+class ModelExporter:
+    """YOLO11 模型导出器"""
+    
+    def __init__(self, model_path):
+        self.model = YOLO(model_path)
+    
+    def export_onnx(self, output_path=None, dynamic=True, simplify=True, opset=12):
+        """
+        导出为 ONNX 格式
+        
+        Args:
+            output_path (str, optional): 输出路径
+            dynamic (bool): 是否使用动态输入尺寸
+            simplify (bool): 是否简化模型
+            opset (int): ONNX opset 版本
+        """
+        print("导出为 ONNX 格式...")
+        self.model.export(
+            format='onnx',
+            dynamic=dynamic,
+            simplify=simplify,
+            opset=opset
+        )
+        print("ONNX 导出完成!")
+    
+    def export_tensorrt(self, output_path=None, half=True, workspace=4, int8=False):
+        """
+        导出为 TensorRT 格式
+        
+        Args:
+            output_path (str, optional): 输出路径
+            half (bool): 是否使用 FP16
+            workspace (int): 最大工作空间大小 (GB)
+            int8 (bool): 是否使用 INT8 量化
+        """
+        print("导出为 TensorRT 格式...")
+        self.model.export(
+            format='engine',
+            half=half,
+            workspace=workspace,
+            int8=int8
+        )
+        print("TensorRT 导出完成!")
+    
+    def export_coreml(self, output_path=None, half=True):
+        """
+        导出为 CoreML 格式
+        
+        Args:
+            output_path (str, optional): 输出路径
+            half (bool): 是否使用 FP16
+        """
+        print("导出为 CoreML 格式...")
+        self.model.export(
+            format='coreml',
+            half=half
+        )
+        print("CoreML 导出完成!")
+    
+    def export_tflite(self, output_path=None, int8=False):
+        """
+        导出为 TFLite 格式
+        
+        Args:
+            output_path (str, optional): 输出路径
+            int8 (bool): 是否使用 INT8 量化
+        """
+        print("导出为 TFLite 格式...")
+        self.model.export(
+            format='tflite',
+            int8=int8
+        )
+        print("TFLite 导出完成!")
+    
+    def benchmark(self, data='assets/bus.jpg'):
+        """
+        运行模型基准测试
+        
+        Args:
+            data: 测试数据路径
+        """
+        print("运行基准测试...")
+        self.model.benchmark(
+            data=data,
+            imgsz=640,
+            half=False,
+            device='cuda'
+        )
+
+# 使用示例
+if __name__ == "__main__":
+    # 初始化导出器
+    exporter = ModelExporter("yolo11n.pt")
+    
+    # 导出为不同格式
+    exporter.export_onnx(dynamic=True, simplify=True)
+    exporter.export_tensorrt(half=True, workspace=4)
+    exporter.export_tflite(int8=False)
+    
+    # 运行基准测试
+    exporter.benchmark()
+```
+
+---
+
+## 📚 YOLO11 检测常见问题解答
+
+### Q1: YOLO11 相比 YOLOv8 有哪些改进？
+
+**答:** YOLO11 的主要改进包括：
+
+1. **架构优化**：C3k2 模块提升特征提取效率
+2. **精度提升**：在相同速度下 mAP 提升 2-5%
+3. **速度提升**：推理速度提升 20-30%
+4. **更好的小目标检测**：改进的特征融合
+5. **增强的量化支持**：FP16/INT8 性能更优
+
+### Q2: 如何提升小目标检测精度？
+
+**答:** 提升小目标检测的方法：
+
+1. **增大输入尺寸**：`imgsz=1280` 捕获更多细节
+2. **使用更大模型**：yolo11l 或 yolo11x
+3. **调整训练策略**：
+   - 增加 `mosaic=1.0` 和 `mixup=0.1`
+   - 降低 `scale=0.5` 增加小尺度样本
+4. **数据增强**：添加小目标专用增强
+5. **推理优化**：降低 `conf=0.2` 提高召回率
+
+### Q3: 训练时出现 NaN 损失怎么办？
+
+**答:** 解决方案：
+
+1. **降低学习率**：`lr0=0.0001`
+2. **检查数据**：确保标注正确，无异常值
+3. **调整批次大小**：减小 `batch` 避免梯度爆炸
+4. **使用梯度裁剪**：在训练器中添加
+5. **检查数据增强**：降低增强强度
+
+### Q4: 如何处理类别不平衡？
+
+**答:** 处理方法：
+
+1. **过采样**：复制少数类样本
+2. **欠采样**：随机删除多数类样本
+3. **类别权重**：在损失函数中设置类别权重
+4. **数据增强**：对少数类进行更强增强
+5. **Focal Loss**：使用 Focal Loss 替代标准交叉熵
+
+### Q5: 如何加速模型训练？
+
+**答:** 加速训练的方法：
+
+1. **使用 GPU**：`device=cuda`
+2. **增大批次大小**：根据显存调整
+3. **减少图像尺寸**：`imgsz=480` 快速迭代
+4. **使用更小模型**：从 yolo11n 开始
+5. **关闭不必要的功能**：`plots=False`, `save_period=-1`
+6. **使用混合精度**：自动启用 FP16
+
+---
+
+## 🎯 YOLO11 检测最佳实践总结
+
+1. **数据准备**：确保标注质量，合理划分数据集
+2. **模型选择**：根据精度和速度需求选择合适的模型大小
+3. **训练策略**：使用适当的增强策略和学习率调度
+4. **性能优化**：通过调参和架构搜索提升性能
+5. **评估分析**：全面评估模型，分析弱项并改进
+6. **部署导出**：选择合适的部署格式和优化策略
+
+---
+
+*本指南基于 YOLO11 最新版本编写，涵盖从数据准备到模型部署的完整流程。*
+
+
 ## Reference for ultralytics/utils/metrics.py - Ultralytics YOLO Docs
 
 **URL:** https://docs.ultralytics.com/zh/reference/utils/metrics/

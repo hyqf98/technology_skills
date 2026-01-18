@@ -8,147 +8,202 @@
 
 **URL:** https://docs.ultralytics.com/zh/reference/utils/callbacks/platform/
 
-**Contents:**
-- Reference for ultralytics/utils/callbacks/platform.py
-- function ultralytics.utils.callbacks.platform.slugify
-- function ultralytics.utils.callbacks.platform.resolve_platform_uri
-- function ultralytics.utils.callbacks.platform._interp_plot
-- function ultralytics.utils.callbacks.platform._send
-- function ultralytics.utils.callbacks.platform._send_async
-- function ultralytics.utils.callbacks.platform._upload_model
-- function ultralytics.utils.callbacks.platform._upload_model_async
-- function ultralytics.utils.callbacks.platform._get_environment_info
-- function ultralytics.utils.callbacks.platform._get_project_name
+### 📋 概述
 
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/callbacks/platform.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
+该模块提供了与 Ultralytics 平台集成的回调函数,用于训练过程中的日志记录、模型上传和性能监控。这些回调函数支持将训练指标、模型检查点和环境信息自动同步到 Ultralytics Platform。
 
-Convert text to URL-safe slug (e.g., 'My Project 1' -> 'my-project-1').
+### 🔧 核心功能
 
-Resolve ul:// URIs to signed URLs by authenticating with Ultralytics Platform.
+#### 1. **slugify(text)**
+将文本转换为 URL 安全的 slug 格式。
 
-Formats: ul://username/datasets/slug -> Returns signed URL to NDJSON file ul://username/project/model -> Returns signed URL to .pt file
+**技术说明:**
+- 使用正则表达式处理文本
+- 转换为小写并替换空格为连字符
+- 移除特殊字符,只保留字母、数字和连字符
+- 限制最大长度为 128 个字符
 
-Interpolate plot curve data from 1000 to n points to reduce storage size.
+**使用场景:**
+- 创建项目名称标识符
+- 生成 URL 友好的资源名称
+- 规范化模型和数据集名称
 
-Send event to Platform endpoint. Returns response JSON on success.
-
-Send event asynchronously using bounded thread pool.
-
-Upload model checkpoint to Platform via signed URL.
-
-Upload model asynchronously using bounded thread pool.
-
-Collect comprehensive environment info using existing ultralytics utilities.
-
-Get slugified project and name from trainer args.
-
-Initialize Platform logging at training start.
-
-Log training and system metrics at epoch end.
-
-Upload model checkpoint (rate limited to every 15 min).
-
-Log final results, upload best model, and send validation plot data.
-
-**Examples:**
-
-Example 1 (python):
+**代码示例:**
 ```python
-def slugify(text)
+from ultralytics.utils.callbacks.platform import slugify
+
+# 转换项目名称
+project_name = "My Object Detection Project v1.0"
+slug = slugify(project_name)
+print(slug)  # 输出: my-object-detection-project-v1-0
+
+# 用于创建唯一的资源标识符
+model_name = "YOLOv8-Custom-Model_Final"
+identifier = slugify(model_name)
+print(identifier)  # 输出: yolov8-custom-model-final
 ```
 
-Example 2 (python):
+#### 2. **resolve_platform_uri(uri, hard=True)**
+解析 ul:// URIs 为签名 URL。
+
+**技术说明:**
+- 支持两种 URI 格式:
+  - `ul://username/datasets/slug` → 返回 NDJSON 文件的签名 URL
+  - `ul://username/project/model` → 返回 .pt 文件的签名 URL
+- 需要设置 `ULTRALYTICS_API_KEY` 环境变量
+- 使用 Bearer Token 进行身份验证
+
+**配置说明:**
 ```python
-def slugify(text):
-    """Convert text to URL-safe slug (e.g., 'My Project 1' -> 'my-project-1')."""
-    if not text:
-        return text
-    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9\s-]", "", str(text).lower()).replace(" ", "-")).strip("-")[:128]
+# 设置 API Key
+import os
+os.environ["ULTRALYTICS_API_KEY"] = "your-api-key-here"
+
+# 或使用 Ultralytics settings
+from ultralytics import settings
+settings.update({"api_key": "your-api-key-here"})
 ```
 
-Example 3 (python):
+**代码示例:**
 ```python
-def resolve_platform_uri(uri, hard = True)
+from ultralytics.utils.callbacks.platform import resolve_platform_uri
+
+# 解析数据集 URI
+dataset_uri = "ul://username/datasets/my-dataset"
+dataset_url = resolve_platform_uri(dataset_uri)
+print(f"数据集 URL: {dataset_url}")
+
+# 解析模型 URI
+model_uri = "ul://username/project/my-model"
+model_url = resolve_platform_uri(model_uri)
+print(f"模型 URL: {model_url}")
+
+# 错误处理
+try:
+    url = resolve_platform_uri("ul://invalid/resource")
+except FileNotFoundError:
+    print("资源未找到")
+except ValueError as e:
+    print(f"无效的 URI: {e}")
 ```
 
-Example 4 (python):
+**注意事项:**
+- 确保 API Key 有效且有权限访问资源
+- 处理网络异常和超时情况
+- 资源可能仍在处理中(409 状态码)
+
+#### 3. **训练回调函数**
+
+##### on_pretrain_routine_start(trainer)
+在训练开始时初始化 Platform 日志记录。
+
+**功能说明:**
+- 收集环境信息(CPU、GPU、Python 版本等)
+- 初始化会话和项目
+- 上传初始配置
+
+##### on_fit_epoch_end(trainer)
+在每个 epoch 结束时记录训练和系统指标。
+
+**记录内容:**
+- 训练损失
+- 验证指标(mAP、precision、recall)
+- 学习率
+- GPU 利用率和内存使用
+
+##### on_train_end(trainer)
+训练结束时保存最佳模型并发送验证图表。
+
+**功能说明:**
+- 上传最佳模型检查点
+- 生成并上传训练曲线图
+- 记录最终性能指标
+
+### 🎯 YOLO11 新特性
+
+#### 1. **增强的平台集成**
+YOLO11 提供了更强大的平台集成功能:
+- 实时训练监控
+- 自动模型版本管理
+- 分布式训练支持
+- 实验对比和分析
+
+#### 2. **性能优化**
+- 异步数据上传,减少训练中断
+- 智能采样,减少日志数据量
+- 增量模型上传,节省带宽
+
+### 📊 实际应用示例
+
+#### 完整的训练流程示例
+
 ```python
-def resolve_platform_uri(uri, hard=True):
-    """Resolve ul:// URIs to signed URLs by authenticating with Ultralytics Platform.
+from ultralytics import YOLO
+import os
 
-    Formats:
-        ul://username/datasets/slug  -> Returns signed URL to NDJSON file
-        ul://username/project/model  -> Returns signed URL to .pt file
+# 设置 API Key
+os.environ["ULTRALYTICS_API_KEY"] = "your-api-key"
 
-    Args:
-        uri (str): Platform URI starting with "ul://".
-        hard (bool): Whether to raise an error if resolution fails (FileNotFoundError only).
+# 加载 YOLO11 模型
+model = YOLO("yolo11n.pt")
 
-    Returns:
-        (str | None): Signed URL on success, None if not found and hard=False.
+# 训练模型(自动启用平台集成)
+results = model.train(
+    data="coco8.yaml",
+    epochs=100,
+    imgsz=640,
+    project="my-project",
+    name="experiment-1"
+)
 
-    Raises:
-        ValueError: If API key is missing/invalid or URI format is wrong.
-        PermissionError: If access is denied.
-        RuntimeError: If resource is not ready (e.g., dataset still processing).
-        FileNotFoundError: If resource not found and hard=True.
-        ConnectionError: If network request fails and hard=True.
-    """
-    import requests
-
-    path = uri[5:]  # Remove "ul://"
-    parts = path.split("/")
-
-    api_key = os.getenv("ULTRALYTICS_API_KEY") or SETTINGS.get("api_key")
-    if not api_key:
-        raise ValueError(f"ULTRALYTICS_API_KEY required for '{uri}'. Get key at https://alpha.ultralytics.com/settings")
-
-    base = "https://alpha.ultralytics.com/api/webhooks"
-    headers = {"Authorization": f"Bearer {api_key}"}
-
-    # ul://username/datasets/slug
-    if len(parts) == 3 and parts[1] == "datasets":
-        username, _, slug = parts
-        url = f"{base}/datasets/{username}/{slug}/export"
-
-    # ul://username/project/model
-    elif len(parts) == 3:
-        username, project, model = parts
-        url = f"{base}/models/{username}/{project}/{model}/download"
-
-    else:
-        raise ValueError(f"Invalid platform URI: {uri}. Use ul://user/datasets/name or ul://user/project/model")
-
-    try:
-        r = requests.head(url, headers=headers, allow_redirects=False, timeout=30)
-
-        # Handle redirect responses (301, 302, 303, 307, 308)
-        if 300 <= r.status_code < 400 and "location" in r.headers:
-            return r.headers["location"]  # Return signed URL
-
-        # Handle error responses
-        if r.status_code == 401:
-            raise ValueError(f"Invalid ULTRALYTICS_API_KEY for '{uri}'")
-        if r.status_code == 403:
-            raise PermissionError(f"Access denied for '{uri}'. Check dataset/model visibility settings.")
-        if r.status_code == 404:
-            if hard:
-                raise FileNotFoundError(f"Not found on platform: {uri}")
-            LOGGER.warning(f"Not found on platform: {uri}")
-            return None
-        if r.status_code == 409:
-            raise RuntimeError(f"Resource not ready: {uri}. Dataset may still be processing.")
-
-        # Unexpected response
-        r.raise_for_status()
-        raise RuntimeError(f"Unexpected response from platform for '{uri}': {r.status_code}")
-
-    except requests.exceptions.RequestException as e:
-        if hard:
-            raise ConnectionError(f"Failed to resolve {uri}: {e}") from e
-        LOGGER.warning(f"Failed to resolve {uri}: {e}")
-        return None
+# 训练过程中自动记录:
+# - 每个 epoch 的指标
+# - 验证结果
+# - 模型检查点
+# - 训练曲线图
 ```
+
+#### 自定义回调函数
+
+```python
+from ultralytics import YOLO
+from ultralytics.utils.callbacks import add_integration_callbacks
+
+# 自定义回调函数
+def on_train_end(trainer):
+    print(f"训练完成! 最佳 mAP: {trainer.best_fitness}")
+    # 自定义逻辑
+    # ...
+
+# 注册自定义回调
+model = YOLO("yolo11n.pt")
+model.add_callback("on_train_end", on_train_end)
+
+# 训练
+model.train(data="coco8.yaml", epochs=10)
+```
+
+### ⚠️ 注意事项
+
+1. **API Key 安全:**
+   - 不要将 API Key 提交到版本控制
+   - 使用环境变量或配置文件
+   - 定期轮换 API Key
+
+2. **网络连接:**
+   - 确保稳定的网络连接
+   - 处理上传失败的情况
+   - 考虑使用重试机制
+
+3. **数据隐私:**
+   - 注意上传的数据集和模型
+   - 检查敏感信息
+   - 遵守数据保护法规
+
+4. **性能影响:**
+   - 日志记录可能影响训练速度
+   - 可使用 `sync=False` 禁用数据收集
+   - 调整上传频率以优化性能
 
 ---
 
@@ -156,249 +211,425 @@ def resolve_platform_uri(uri, hard=True):
 
 **URL:** https://docs.ultralytics.com/zh/reference/utils/callbacks/wb/
 
-**Contents:**
-- Reference for ultralytics/utils/callbacks/wb.py
-- function ultralytics.utils.callbacks.wb._custom_table
-- function ultralytics.utils.callbacks.wb._plot_curve
-- function ultralytics.utils.callbacks.wb._log_plots
-- function ultralytics.utils.callbacks.wb.on_pretrain_routine_start
-- function ultralytics.utils.callbacks.wb.on_fit_epoch_end
-- function ultralytics.utils.callbacks.wb.on_train_epoch_end
-- function ultralytics.utils.callbacks.wb.on_train_end
+### 📋 概述
 
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/callbacks/wb.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
+该模块实现了与 Weights & Biases (W&B) 的集成,用于实验跟踪、可视化和模型管理。W&B 是一个强大的 MLOps 平台,可以监控训练过程、比较实验结果和共享模型。
 
-Create and log a custom metric visualization to wandb.plot.pr_curve.
+### 🔧 核心功能
 
-This function crafts a custom metric visualization that mimics the behavior of the default wandb precision-recall curve while allowing for enhanced customization. The visual metric is useful for monitoring model performance across different classes.
+#### 1. **_custom_table(x, y, classes, title, x_title, y_title)**
+创建自定义的度量可视化图表。
 
-Log a metric curve visualization.
+**技术说明:**
+- 使用 Polars DataFrame 处理数据
+- 创建面积曲线下的可视化
+- 支持多类别对比分析
+- 适用于 precision-recall、ROC 曲线等
 
-This function generates a metric curve based on input data and logs the visualization to wandb. The curve can represent aggregated data (mean) or individual class data, depending on the 'only_mean' flag.
+**参数说明:**
+- `x`: x 轴数据点列表
+- `y`: y 轴数据点列表
+- `classes`: 类别标签列表
+- `title`: 图表标题
+- `x_title`: x 轴标签
+- `y_title`: y 轴标签
 
-The function leverages the '_custom_table' function to generate the actual visualization.
-
-Log plots to WandB at a specific step if they haven't been logged already.
-
-This function checks each plot in the input dictionary against previously processed plots and logs new or updated plots to WandB at the specified step.
-
-The function uses a shallow copy of the plots dictionary to prevent modification during iteration. Plots are identified by their stem name (filename without extension). Each plot is logged as a WandB Image object.
-
-Initialize and start wandb project if module is present.
-
-Log training metrics and model information at the end of an epoch.
-
-Log metrics and save images at the end of each training epoch.
-
-Save the best model as an artifact and log final plots at the end of training.
-
-**Examples:**
-
-Example 1 (python):
+**代码示例:**
 ```python
-def _custom_table(x, y, classes, title = "Precision Recall Curve", x_title = "Recall", y_title = "Precision")
-```
+from ultralytics.utils.callbacks.wb import _custom_table
+import numpy as np
 
-Example 2 (python):
-```python
-def _custom_table(x, y, classes, title="Precision Recall Curve", x_title="Recall", y_title="Precision"):
-    """Create and log a custom metric visualization to wandb.plot.pr_curve.
+# 创建 precision-recall 曲线数据
+recall = np.linspace(0, 1, 100)
+precision = np.random.rand(100) * 0.3 + 0.7  # 模拟精度数据
+classes = ["person"] * 100
 
-    This function crafts a custom metric visualization that mimics the behavior of the default wandb precision-recall
-    curve while allowing for enhanced customization. The visual metric is useful for monitoring model performance across
-    different classes.
-
-    Args:
-        x (list): Values for the x-axis; expected to have length N.
-        y (list): Corresponding values for the y-axis; also expected to have length N.
-        classes (list): Labels identifying the class of each point; length N.
-        title (str, optional): Title for the plot.
-        x_title (str, optional): Label for the x-axis.
-        y_title (str, optional): Label for the y-axis.
-
-    Returns:
-        (wandb.Object): A wandb object suitable for logging, showcasing the crafted metric visualization.
-    """
-    import polars as pl  # scope for faster 'import ultralytics'
-    import polars.selectors as cs
-
-    df = pl.DataFrame({"class": classes, "y": y, "x": x}).with_columns(cs.numeric().round(3))
-    data = df.select(["class", "y", "x"]).rows()
-
-    fields = {"x": "x", "y": "y", "class": "class"}
-    string_fields = {"title": title, "x-axis-title": x_title, "y-axis-title": y_title}
-    return wb.plot_table(
-        "wandb/area-under-curve/v0",
-        wb.Table(data=data, columns=["class", "y", "x"]),
-        fields=fields,
-        string_fields=string_fields,
-    )
-```
-
-Example 3 (python):
-```python
-def _plot_curve(
-    x,
-    y,
-    names=None,
-    id="precision-recall",
-    title="Precision Recall Curve",
+# 生成可视化
+table = _custom_table(
+    x=recall,
+    y=precision,
+    classes=classes,
+    title="Precision-Recall Curve",
     x_title="Recall",
-    y_title="Precision",
-    num_x=100,
-    only_mean=False,
+    y_title="Precision"
 )
 ```
 
-Example 4 (python):
+#### 2. **_plot_curve(x, y, names, id, title, x_title, y_title, num_x, only_mean)**
+记录度量曲线可视化。
+
+**技术说明:**
+- 对曲线进行插值以平滑显示
+- 支持显示平均曲线和各个类别的曲线
+- 自动处理数据点和标签
+
+**配置选项:**
 ```python
-def _plot_curve(
-    x,
-    y,
-    names=None,
-    id="precision-recall",
-    title="Precision Recall Curve",
-    x_title="Recall",
-    y_title="Precision",
-    num_x=100,
-    only_mean=False,
-):
-    """Log a metric curve visualization.
+# 只显示平均曲线
+plot = _plot_curve(x, y, names, only_mean=True)
 
-    This function generates a metric curve based on input data and logs the visualization to wandb. The curve can
-    represent aggregated data (mean) or individual class data, depending on the 'only_mean' flag.
+# 显示所有类别的曲线
+plot = _plot_curve(x, y, names, only_mean=False)
 
-    Args:
-        x (np.ndarray): Data points for the x-axis with length N.
-        y (np.ndarray): Corresponding data points for the y-axis with shape (C, N), where C is the number of classes.
-        names (list, optional): Names of the classes corresponding to the y-axis data; length C.
-        id (str, optional): Unique identifier for the logged data in wandb.
-        title (str, optional): Title for the visualization plot.
-        x_title (str, optional): Label for the x-axis.
-        y_title (str, optional): Label for the y-axis.
-        num_x (int, optional): Number of interpolated data points for visualization.
-        only_mean (bool, optional): Flag to indicate if only the mean curve should be plotted.
-
-    Notes:
-        The function leverages the '_custom_table' function to generate the actual visualization.
-    """
-    import numpy as np
-
-    # Create new x
-    if names is None:
-        names = []
-    x_new = np.linspace(x[0], x[-1], num_x).round(5)
-
-    # Create arrays for logging
-    x_log = x_new.tolist()
-    y_log = np.interp(x_new, x, np.mean(y, axis=0)).round(3).tolist()
-
-    if only_mean:
-        table = wb.Table(data=list(zip(x_log, y_log)), columns=[x_title, y_title])
-        wb.run.log({title: wb.plot.line(table, x_title, y_title, title=title)})
-    else:
-        classes = ["mean"] * len(x_log)
-        for i, yi in enumerate(y):
-            x_log.extend(x_new)  # add new x
-            y_log.extend(np.interp(x_new, x, yi))  # interpolate y to new x
-            classes.extend([names[i]] * len(x_new))  # add class names
-        wb.log({id: _custom_table(x_log, y_log, classes, title, x_title, y_title)}, commit=False)
+# 自定义插值点数
+plot = _plot_curve(x, y, names, num_x=200)
 ```
+
+#### 3. **_log_plots(plots, step, prefix)**
+记录图表到 WandB。
+
+**功能说明:**
+- 检查是否已处理过该图表
+- 将图像转换为 WandB Image 对象
+- 使用文件名作为标识符
+
+### 🎯 YOLO11 与 W&B 集成
+
+#### 安装和配置
+
+```bash
+# 安装 W&B
+pip install wandb
+
+# 登录
+wandb login
+```
+
+#### 完整训练示例
+
+```python
+import wandb
+from ultralytics import YOLO
+
+# 初始化 W&B 项目
+wandb.init(
+    project="yolo11-experiments",
+    name="experiment-1",
+    config={
+        "learning_rate": 0.01,
+        "epochs": 100,
+        "batch_size": 16
+    }
+)
+
+# 训练模型
+model = YOLO("yolo11n.pt")
+model.train(
+    data="coco8.yaml",
+    epochs=100,
+    imgsz=640
+)
+
+# 完成运行
+wandb.finish()
+```
+
+### 📊 高级功能
+
+#### 1. **超参数优化**
+
+```python
+import wandb
+
+sweep_config = {
+    "method": "bayes",
+    "metric": {"name": "mAP50", "goal": "maximize"},
+    "parameters": {
+        "lr0": {"min": 0.0001, "max": 0.01},
+        "momentum": {"min": 0.6, "max": 0.98},
+        "weight_decay": {"min": 0.0, "max": 0.001}
+    }
+}
+
+wandb.sweep(sweep_config, project="yolo11-sweeps")
+```
+
+#### 2. **实验对比**
+
+```python
+# 在 W&B Dashboard 中对比多个实验
+# 访问 https://wandb.ai/your-username/project-name
+
+# 查看训练曲线
+# 对比不同超参数的效果
+# 分析模型性能
+```
+
+#### 3. **模型版本管理**
+
+```python
+import wandb
+
+# 保存模型到 W&B
+run = wandb.init(project="yolo11-models")
+artifact = wandb.Artifact("yolo11n-custom", type="model")
+artifact.add_file("runs/train/exp/weights/best.pt")
+run.log_artifact(artifact)
+
+# 加载模型
+artifact = run.use_artifact("yolo11n-custom:latest")
+artifact_dir = artifact.download()
+model = YOLO(f"{artifact_dir}/best.pt")
+```
+
+### ⚠️ 注意事项
+
+1. **数据隐私:**
+   - 检查上传的数据和图像
+   - 使用离线模式处理敏感数据
+   - 遵守数据保护政策
+
+2. **网络要求:**
+   - 需要稳定的网络连接
+   - 大文件上传可能需要时间
+   - 考虑使用代理或镜像
+
+3. **存储管理:**
+   - 注意 W&B 存储配额
+   - 定期清理旧的实验
+   - 使用标签和备注组织实验
 
 ---
 
-## VOC 探索示例 - Ultralytics YOLO 文档
+## Ultralytics Explorer API
 
-**URL:** https://docs.ultralytics.com/zh/datasets/explorer/explorer/
+**URL:** https://docs.ultralytics.com/zh/datasets/explorer/api/
 
-**Contents:**
-- VOC 探索示例
-- 设置
-- 相似性搜索
-- 询问AI：使用自然语言搜索或筛选
-- 在您的数据集上运行SQL查询
-- 处理嵌入表（高级）
-  - 运行原始查询¶
-  - 转换为常用数据格式
-  - 处理嵌入
-  - 散点图
+### 📋 概述
 
-欢迎使用 Ultralytics Explorer API 笔记本。本笔记本介绍了可用于通过语义搜索、向量搜索和 SQL 查询探索数据集的资源。
+> ⚠️ **重要提示:** 截至 ultralytics>=8.3.10,Ultralytics Explorer 支持已弃用。类似(且已扩展)的数据集探索功能可在 Ultralytics HUB 获取。
 
-尝试 yolo explorer (由 Explorer API 提供支持)
+Explorer API 是一个用于探索计算机视觉数据集的 Python API,支持语义搜索、SQL 查询、向量相似性搜索和自然语言提示。
 
-安装 ultralytics 并运行 yolo explorer 在您的终端中运行自定义查询和语义搜索，并在您的浏览器中查看。
+### 🔧 核心功能
 
-截至 ultralytics>=8.3.10，Ultralytics Explorer 支持已弃用。类似（且已扩展）的数据集探索功能可在 Ultralytics HUB.
+#### 1. **安装**
 
-安装 ultralytics 以及所需的 依赖项，然后检查软件和硬件。
-
-利用向量相似度搜索的强大功能，在数据集中找到相似的数据点以及它们在嵌入空间中的距离。只需为给定的数据集-模型对创建一个嵌入表即可。只需创建一次，即可自动重复使用。
-
-嵌入表构建完成后，您可以通过以下任何一种方式运行语义搜索：
-
-您将获得一个Pandas DataFrame，其中包含与输入最相似的有限数量的数据点，以及它们在嵌入空间中的距离。您可以使用此数据集进行进一步筛选。
-
-您还可以使用以下命令直接绘制相似的样本 plot_similar util
-
-您可以向Explorer对象发出提示，说明您想查看的数据点类型，它将尝试返回一个包含这些结果的DataFrame。由于它由LLM驱动，因此并非总能准确无误。在这种情况下，它将返回 None.
-
-要绘制这些结果，您可以使用 plot_query_result 实用工具。示例：
-
-有时您可能希望调查数据集中的特定条目。为此，Explorer 允许您执行 SQL 查询。它接受以下任一格式：
-
-这可以用来调查模型性能和特定的数据点。例如：
-
-您可以结合使用 SQL 查询和语义搜索来筛选到特定类型的结果
-
-就像相似性搜索一样，您还可以使用一个实用程序来直接绘制 sql 查询，使用 exp.plot_sql_query
-
-Explorer 适用于 LanceDB 在内部建立表格。您可以使用以下方式直接访问此表： Explorer.table 对象并运行原始查询，下推预过滤器和后过滤器等。
-
-向量搜索从数据库中查找最近的向量。在推荐系统或搜索引擎中，您可以从搜索的产品中找到类似的产品。在 LLM 和其他 AI 应用程序中，每个数据点都可以由某些模型生成的嵌入来表示，它返回最相关的特征。
-
-在高维向量空间中搜索，是为了找到查询向量的 K 近邻 (KNN)。
-
-指标。在 LanceDB 中，指标是描述一对向量之间距离的方式。目前，它支持以下指标：
-
-您可以从lancedb表中访问原始嵌入并对其进行分析。图像嵌入存储在列中 vector
-
-分析嵌入的初步步骤之一是通过降维将其绘制在二维空间中。让我们尝试一个例子
-
-这是一个由嵌入表驱动的操作的简单示例。Explorer 附带一个 similarity_index 操作-
-
-对于给定的数据集、模型， max_dist & top_k 一旦生成相似度索引，它将被重复使用。如果您的数据集已更改，或者您只需要重新生成相似度索引，您可以传递 force=True。与向量和 SQL 搜索类似，这也带有一个可以直接绘制它的实用程序。让我们看看
-
-让我们创建一个查询，查看相似度计数大于 30 的数据点，并绘制与它们相似的图像。
-
-**Examples:**
-
-Example 1 (unknown):
-```unknown
-!uv pip install ultralytics[explorer] openai
-yolo checks
+```bash
+pip install ultralytics[explorer]
 ```
 
-Example 2 (unknown):
-```unknown
-exp = Explorer("VOC.yaml", model="yolo11n.pt")
+依赖库:
+- LanceDB: 向量数据库
+- OpenAI: 用于自然语言查询(可选)
+
+#### 2. **初始化 Explorer**
+
+```python
+from ultralytics import Explorer
+
+# 创建 Explorer 对象
+exp = Explorer(
+    data="coco8.yaml",      # 数据集配置
+    model="yolo11n.pt"       # 使用的模型
+)
+
+# 创建嵌入表
 exp.create_embeddings_table()
 ```
 
-Example 3 (markdown):
-```markdown
-# Search dataset by index
+**技术说明:**
+- 嵌入表只创建一次并可重复使用
+- 使用 LanceDB 进行持久化存储
+- 支持大型数据集而不耗尽内存
+- 强制更新: `exp.create_embeddings_table(force=True)`
+
+### 🎯 主要功能
+
+#### 1. **相似性搜索**
+
+基于向量相似度搜索相似的数据点。
+
+```python
+# 按索引搜索
 similar = exp.get_similar(idx=1, limit=10)
-similar.head()
-```
+print(similar.head())
 
-Example 4 (unknown):
-```unknown
+# 按图像搜索
+similar = exp.get_similar(
+    img="https://ultralytics.com/images/bus.jpg",
+    limit=10
+)
+
+# 多索引搜索
+similar = exp.get_similar(idx=[100, 101], limit=10)
+
+# 绘制相似图像
 exp.plot_similar(idx=6500, limit=20)
-exp.plot_similar(idx=[100, 101], limit=10)  # Can also pass list of idxs or imgs
-
-exp.plot_similar(img="https://ultralytics.com/images/bus.jpg", limit=10, labels=False)  # Can also pass external images
+exp.plot_similar(img="path/to/image.jpg", limit=10, labels=False)
 ```
+
+**使用场景:**
+- 查找相似的数据样本
+- 检测数据异常
+- 分析数据分布
+- 数据集清洗
+
+#### 2. **AI 自然语言查询**
+
+使用自然语言搜索数据集。
+
+```python
+# 自然语言查询
+df = exp.ask_ai("显示100张恰好包含一个人和2只狗的图像")
+print(df.head())
+
+# 绘制查询结果
+exp.plot_sql_query("显示10张恰好包含5个人的图像")
+```
+
+**技术说明:**
+- 使用 LLM 将查询转换为 SQL
+- 结果具有概率性,可能不准确
+- 需要 OpenAI API Key
+
+```python
+# 设置 API Key
+from ultralytics import settings
+settings.update({"openai_api_key": "your-api-key"})
+```
+
+#### 3. **SQL 查询**
+
+直接执行 SQL 查询。
+
+```python
+# 完整 SQL 查询
+df = exp.sql_query("SELECT * FROM table WHERE labels LIKE '%person%'")
+
+# WHERE 子句
+df = exp.sql_query("WHERE labels LIKE '%person%' AND labels LIKE '%dog%'")
+
+# 绘制查询结果
+exp.plot_sql_query("WHERE labels LIKE '%car%'")
+```
+
+**使用场景:**
+- 精确过滤数据
+- 复杂条件查询
+- 数据统计分析
+
+#### 4. **嵌入表操作**
+
+直接访问和操作嵌入表。
+
+```python
+# 访问底层 LanceDB 表
+table = exp.table
+
+# 原始查询
+results = table.search().limit(10).to_pandas()
+
+# 创建向量索引(加速查询)
+table.create_index(num_partitions=10, num_sub_vectors=10)
+```
+
+### 📊 高级功能
+
+#### 1. **相似度索引**
+
+计算每个数据点与其他点的相似度。
+
+```python
+# 生成相似度索引
+exp.similarity_index(max_dist=0.2, top_k=0.01)
+
+# 查询相似度高的数据点
+similar_data = exp.sql_query(
+    "WHERE similarity_count > 30"
+)
+
+# 绘制相似数据
+exp.plot_similar(idx=similar_data.index[0], limit=10)
+```
+
+**使用场景:**
+- 检测重复数据
+- 查找代表性样本
+- 数据集分析
+
+#### 2. **嵌入可视化**
+
+降维可视化嵌入空间。
+
+```python
+import matplotlib.pyplot as plt
+import numpy as np
+
+# 获取嵌入向量
+embeddings = exp.table.to_pandas()["vector"]
+
+# t-SNE 降维
+from sklearn.manifold import TSNE
+tsne = TSNE(n_components=2)
+embeddings_2d = tsne.fit_transform(np.stack(embeddings))
+
+# 可视化
+plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], alpha=0.5)
+plt.title("数据集嵌入可视化")
+plt.show()
+```
+
+### 🎯 实际应用示例
+
+#### 数据集质量分析
+
+```python
+from ultralytics import Explorer
+
+exp = Explorer(data="coco8.yaml", model="yolo11n.pt")
+exp.create_embeddings_table()
+
+# 1. 查找异常样本
+similar = exp.get_similar(idx=0, limit=10)
+print(f"最相似的样本距离: {similar['imgs_dist'].max()}")
+
+# 2. 分析类别分布
+stats = exp.sql_query("""
+    SELECT
+        COUNT(*) as count,
+        AVG(ims_dist) as avg_similarity
+    FROM table
+    GROUP BY labels
+""")
+
+# 3. 查找潜在错误标注
+errors = exp.ask_ai("显示可能有错误标注的图像")
+```
+
+#### 数据集清洗
+
+```python
+# 1. 查找重复样本
+duplicates = exp.sql_query("""
+    WHERE similarity_count > 5 AND im_dist < 0.1
+""")
+
+# 2. 查找离群样本
+outliers = exp.sql_query("""
+    WHERE similarity_count < 2
+""")
+
+print(f"发现 {len(duplicates)} 个可能的重复样本")
+print(f"发现 {len(outliers)} 个离群样本")
+```
+
+### ⚠️ 注意事项
+
+1. **性能考虑:**
+   - 首次创建嵌入表需要时间
+   - 大型数据集建议使用 SSD
+   - 定期清理旧的嵌入表
+
+2. **内存使用:**
+   - LanceDB 使用磁盘存储,内存占用小
+   - 可以处理超过内存大小的数据集
+   - 建议使用 `force=True` 更新嵌入表
+
+3. **API Key:**
+   - 自然语言查询需要 OpenAI API Key
+   - 设置: `yolo settings openai_api_key="your-key"`
+   - 注意 API 使用费用
 
 ---
 
@@ -406,231 +637,163 @@ exp.plot_similar(img="https://ultralytics.com/images/bus.jpg", limit=10, labels=
 
 **URL:** https://docs.ultralytics.com/zh/reference/utils/callbacks/dvc/
 
-**Contents:**
-- Reference for ultralytics/utils/callbacks/dvc.py
-- function ultralytics.utils.callbacks.dvc._log_images
-- function ultralytics.utils.callbacks.dvc._log_plots
-- function ultralytics.utils.callbacks.dvc._log_confusion_matrix
-- function ultralytics.utils.callbacks.dvc.on_pretrain_routine_start
-- function ultralytics.utils.callbacks.dvc.on_pretrain_routine_end
-- function ultralytics.utils.callbacks.dvc.on_train_start
-- function ultralytics.utils.callbacks.dvc.on_train_epoch_start
-- function ultralytics.utils.callbacks.dvc.on_fit_epoch_end
-- function ultralytics.utils.callbacks.dvc.on_train_end
+### 📋 概述
 
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/callbacks/dvc.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
+该模块实现了与 DVC (Data Version Control) 的集成,用于实验跟踪和模型管理。DVC 是一个开源的 ML 实验管理工具,可以跟踪指标、参数和模型。
 
-Log images at specified path with an optional prefix using DVCLive.
+### 🔧 核心功能
 
-This function logs images found at the given path to DVCLive, organizing them by batch to enable slider functionality in the UI. It processes image filenames to extract batch information and restructures the path accordingly.
+#### 1. **_log_images(path, prefix)**
+使用 DVCLive 记录图像。
 
-Log plot images for training progress if they have not been previously processed.
+**技术说明:**
+- 按 batch 组织图像以启用滑块功能
+- 从文件名提取 batch 信息
+- 重构路径结构
 
-Log confusion matrix for a validator using DVCLive.
-
-This function processes the confusion matrix from a validator object and logs it to DVCLive by converting the matrix into lists of target and prediction labels.
-
-Initialize DVCLive logger for training metadata during pre-training routine.
-
-Log plots related to the training process at the end of the pretraining routine.
-
-Log the training parameters if DVCLive logging is active.
-
-Set the global variable _training_epoch value to True at the start of training each epoch.
-
-Log training metrics, model info, and advance to next step at the end of each fit epoch.
-
-This function is called at the end of each fit epoch during training. It logs various metrics including training loss items, validation metrics, and learning rates. On the first epoch, it also logs model information. Additionally, it logs training and validation plots and advances the DVCLive step counter.
-
-This function only performs logging operations when DVCLive logging is active and during a training epoch. The global variable _training_epoch is used to track whether the current epoch is a training epoch.
-
-Log best metrics, plots, and confusion matrix at the end of training.
-
-This function is called at the conclusion of the training process to log final metrics, visualizations, and model artifacts if DVCLive logging is active. It captures the best model performance metrics, training plots, validation plots, and confusion matrix for later analysis.
-
-**Examples:**
-
-Example 1 (typescript):
-```typescript
-def _log_images(path: Path, prefix: str = "") -> None
-```
-
-Example 2 (python):
+**代码示例:**
 ```python
->>> from pathlib import Path
->>> _log_images(Path("runs/train/exp/val_batch0_pred.jpg"), prefix="validation")
-```
+from ultralytics.utils.callbacks.dvc import _log_images
+from pathlib import Path
 
-Example 3 (python):
-```python
-def _log_images(path: Path, prefix: str = "") -> None:
-    """Log images at specified path with an optional prefix using DVCLive.
-
-    This function logs images found at the given path to DVCLive, organizing them by batch to enable slider
-    functionality in the UI. It processes image filenames to extract batch information and restructures the path
-    accordingly.
-
-    Args:
-        path (Path): Path to the image file to be logged.
-        prefix (str, optional): Optional prefix to add to the image name when logging.
-
-    Examples:
-        >>> from pathlib import Path
-        >>> _log_images(Path("runs/train/exp/val_batch0_pred.jpg"), prefix="validation")
-    """
-    if live:
-        name = path.name
-
-        # Group images by batch to enable sliders in UI
-        if m := re.search(r"_batch(\d+)", name):
-            ni = m[1]
-            new_stem = re.sub(r"_batch(\d+)", "_batch", path.stem)
-            name = (Path(new_stem) / ni).with_suffix(path.suffix)
-
-        live.log_image(os.path.join(prefix, name), path)
-```
-
-Example 4 (typescript):
-```typescript
-def _log_plots(plots: dict, prefix: str = "") -> None
-```
-
----
-
-## Ultralytics Explorer API - Ultralytics YOLO 文档
-
-**URL:** https://docs.ultralytics.com/zh/datasets/explorer/api/
-
-**Contents:**
-- Ultralytics Explorer API
-- 简介
-- 安装
-- 用法
-- 1. 相似性搜索
-  - 绘制相似图像
-- 2. 询问 AI（自然语言查询）
-- 3. SQL 查询
-  - 绘制 SQL 查询结果
-- 4. 使用嵌入表
-
-截至 ultralytics>=8.3.10，Ultralytics Explorer 支持已弃用。类似（且已扩展）的数据集探索功能可在 Ultralytics HUB.
-
-Explorer API 是一个用于探索数据集的 python API。它支持使用 SQL 查询、向量相似性搜索和语义搜索来过滤和搜索数据集。
-
-观看： Ultralytics Explorer API 概述
-
-Explorer的某些功能依赖于外部库。当您使用Explorer时，这些库会自动安装。要手动安装这些依赖项，请使用以下命令：
-
-给定数据集和模型对的 Embeddings 表仅创建一次并重复使用。这些在底层使用 LanceDB，它可以在磁盘上扩展，因此您可以为像 COCO 这样的大型数据集创建和重复使用 embeddings，而不会耗尽内存。
-
-如果您想强制更新嵌入表，您可以传递 force=True 到 create_embeddings_table 方法。
-
-您可以直接访问 LanceDB 表对象以执行高级分析。有关更多信息，请参阅使用嵌入表部分
-
-相似性搜索是一种查找与给定图像相似的图像的技术。它基于相似的图像将具有相似嵌入的理念。一旦构建了嵌入表，您可以通过以下任何方式运行语义搜索：
-
-您将获得一个Pandas DataFrame，其中包含 limit 与输入最相似的数据点数量，以及它们在嵌入空间中的距离。您可以使用此数据集进行进一步过滤。
-
-您还可以使用以下工具绘制相似的图像 plot_similar method。此方法采用与以下方法相同的参数 get_similar 并在网格中绘制相似的图像。
-
-此功能允许您使用自然语言过滤数据集，无需编写SQL。AI驱动的查询生成器将您的提示转换为查询并返回匹配结果。例如，您可以询问：“给我展示100张恰好包含一个人和2只狗的图像。也可以有其他对象”，它将生成查询并显示这些结果。 注意：此功能使用LLM，因此结果具有概率性，可能不准确。
-
-您可以使用以下工具在数据集上运行 SQL 查询 sql_query 方法。此方法接受 SQL 查询作为输入，并返回一个包含结果的 Pandas DataFrame。
-
-您还可以使用以下工具绘制SQL查询的结果 plot_sql_query method。此方法采用与以下方法相同的参数 sql_query 并在网格中绘制结果。
-
-您还可以直接使用嵌入表。创建嵌入表后，您可以使用 Explorer.table
-
-Explorer 适用于 LanceDB 在内部建立表格。您可以使用以下方式直接访问此表： Explorer.table 对象并运行原始查询，下推预过滤器和后过滤器等。
-
-当使用大型数据集时，您还可以创建一个专用的向量索引，以便更快地查询。这可以通过以下方式完成 create_index LanceDB 表上的 method。
-
-您可以使用嵌入表来执行各种探索性分析。 以下是一些示例：
-
-Explorer 自带 similarity_index 操作：
-
-它返回一个包含以下列的 Pandas DataFrame：
-
-对于给定的数据集、模型， max_dist & top_k 一旦生成相似度索引，它将被重复使用。如果您的数据集已更改，或者您只需要重新生成相似度索引，您可以传递 force=True.
-
-您可以使用相似度索引来构建自定义条件以过滤数据集。 例如，您可以使用以下代码过滤掉与数据集中任何其他图像不相似的图像：
-
-您还可以使用您选择的绘图工具可视化嵌入空间。例如，这是一个使用 matplotlib 的简单示例：
-
-开始使用 Explorer API 创建您自己的计算机视觉数据集探索报告。如需灵感，请查看VOC 探索示例。
-
-试试我们基于 Explorer API 的 GUI 演示
-
-Ultralytics Explorer API 专为全面的数据集探索而设计。它允许用户使用 SQL 查询、向量相似性搜索和语义搜索来过滤和搜索数据集。这个强大的 python API 可以处理大型数据集，非常适合使用 Ultralytics 模型的各种计算机视觉任务。
-
-要安装 Ultralytics Explorer API 及其依赖项，请使用以下命令：
-
-这将自动安装 Explorer API 功能所需的所有外部库。有关其他设置详细信息，请参阅我们文档的安装部分。
-
-您可以使用 Ultralytics Explorer API，通过创建嵌入表并查询相似图像来进行相似性搜索。这是一个基本示例：
-
-LanceDB，由 Ultralytics Explorer 在底层使用，提供可扩展的、基于磁盘的嵌入表。这确保您可以为 COCO 等大型数据集创建和重用嵌入，而不会耗尽内存。这些表只创建一次，可以重复使用，从而提高数据处理效率。
-
-Ask AI 功能允许用户使用自然语言查询来过滤数据集。此功能利用 LLM 在后台将这些查询转换为 SQL 查询。这是一个示例：
-
-**Examples:**
-
-Example 1 (unknown):
-```unknown
-pip install ultralytics[explorer]
-```
-
-Example 2 (python):
-```python
-from ultralytics import Explorer
-
-# Create an Explorer object
-explorer = Explorer(data="coco128.yaml", model="yolo11n.pt")
-
-# Create embeddings for your dataset
-explorer.create_embeddings_table()
-
-# Search for similar images to a given image/images
-df = explorer.get_similar(img="path/to/image.jpg")
-
-# Or search for similar images to a given index/indices
-df = explorer.get_similar(idx=0)
-```
-
-Example 3 (python):
-```python
-from ultralytics import Explorer
-
-# create an Explorer object
-exp = Explorer(data="coco128.yaml", model="yolo11n.pt")
-exp.create_embeddings_table()
-
-similar = exp.get_similar(img="https://ultralytics.com/images/bus.jpg", limit=10)
-print(similar.head())
-
-# Search using multiple indices
-similar = exp.get_similar(
-    img=["https://ultralytics.com/images/bus.jpg", "https://ultralytics.com/images/bus.jpg"],
-    limit=10,
+# 记录验证结果
+_log_images(
+    Path("runs/train/exp/val_batch0_pred.jpg"),
+    prefix="validation"
 )
-print(similar.head())
 ```
 
-Example 4 (python):
+#### 2. **_log_plots(plots, prefix)**
+记录训练图表。
+
+**功能说明:**
+- 检查是否已处理过图表
+- 记录损失曲线、混淆矩阵等
+- 支持多种可视化类型
+
+#### 3. **_log_confusion_matrix(validator)**
+记录混淆矩阵。
+
+**技术说明:**
+- 从验证器提取混淆矩阵
+- 转换为目标和预测标签列表
+- 使用 DVCLive 记录
+
+### 🎯 DVC 集成示例
+
+#### 1. **安装 DVC**
+
+```bash
+pip install dvc dvclive
+dvc init
+```
+
+#### 2. **训练时启用 DVC**
+
 ```python
-from ultralytics import Explorer
+from ultralytics import YOLO
 
-# create an Explorer object
-exp = Explorer(data="coco128.yaml", model="yolo11n.pt")
-exp.create_embeddings_table()
-
-similar = exp.get_similar(idx=1, limit=10)
-print(similar.head())
-
-# Search using multiple indices
-similar = exp.get_similar(idx=[1, 10], limit=10)
-print(similar.head())
+# DVC 会自动检测并记录
+model = YOLO("yolo11n.pt")
+model.train(
+    data="coco8.yaml",
+    epochs=100,
+    imgsz=640
+)
 ```
+
+#### 3. **配置 DVCLive**
+
+创建 `dvc.yaml`:
+
+```yaml
+# dvc.yaml
+metrics:
+  - runs/train/exp/results.csv
+plots:
+  - runs/train/exp/*.png
+  - runs/train/exp/results.csv:
+      x: epoch
+      y: [mAP50, mAP50-95]
+```
+
+#### 4. **比较实验**
+
+```bash
+# 训练多个模型
+dvc exp run -n exp1
+dvc exp run -n exp2
+
+# 比较实验
+dvc exp show
+
+# 查看特定指标
+dvc exp show --metrics
+dvc exp show --params
+```
+
+### 📊 实际应用
+
+#### 1. **超参数优化**
+
+```python
+from ultralytics import YOLO
+import itertools
+
+# 定义超参数网格
+learning_rates = [0.001, 0.01, 0.1]
+momentums = [0.9, 0.95, 0.99]
+
+# 网格搜索
+for lr, momentum in itertools.product(learning_rates, momentums):
+    model = YOLO("yolo11n.pt")
+    model.train(
+        data="coco8.yaml",
+        epochs=50,
+        lr0=lr,
+        momentum=momentum
+    )
+```
+
+```bash
+# 比较所有实验
+dvc exp show --sort-by metric:mAP50
+```
+
+#### 2. **实验跟踪**
+
+```python
+# 自定义指标
+from dvclive import Live
+
+with Live("custom_experiment") as live:
+    model = YOLO("yolo11n.pt")
+
+    for epoch in range(100):
+        # 训练一个 epoch
+        results = model.train_one_epoch(...)
+
+        # 记录自定义指标
+        live.log_metric("custom_metric", results.custom_value)
+        live.next_step()
+```
+
+### ⚠️ 注意事项
+
+1. **Git 集成:**
+   - DVC 需要与 Git 配合使用
+   - 跟踪 `dvc.yaml` 和 `.dvclive` 文件
+   - 不要跟踪数据文件和模型
+
+2. **存储管理:**
+   - DVC 使用缓存存储大文件
+   - 定期清理缓存: `dvc gc`
+   - 使用远程存储备份数据
+
+3. **性能:**
+   - DVCLive 可能轻微影响训练速度
+   - 可以调整日志频率
+   - 使用异步记录减少影响
 
 ---
 
@@ -638,183 +801,244 @@ print(similar.head())
 
 **URL:** https://docs.ultralytics.com/zh/reference/utils/callbacks/neptune/
 
-**Contents:**
-- Reference for ultralytics/utils/callbacks/neptune.py
-- function ultralytics.utils.callbacks.neptune._log_scalars
-- function ultralytics.utils.callbacks.neptune._log_images
-- function ultralytics.utils.callbacks.neptune._log_plot
-- function ultralytics.utils.callbacks.neptune.on_pretrain_routine_start
-- function ultralytics.utils.callbacks.neptune.on_train_epoch_end
-- function ultralytics.utils.callbacks.neptune.on_fit_epoch_end
-- function ultralytics.utils.callbacks.neptune.on_val_end
-- function ultralytics.utils.callbacks.neptune.on_train_end
+### 📋 概述
 
-This page is sourced from https://github.com/ultralytics/ultralytics/blob/main/ultralytics/utils/callbacks/neptune.py. Have an improvement or example to add? Open a Pull Request — thank you! 🙏
+该模块实现了与 Neptune.ai 的集成,用于实验跟踪和模型管理。Neptune 是一个 MLOps 平台,提供全面的实验监控和协作功能。
 
-Log scalars to the NeptuneAI experiment logger.
+### 🔧 核心功能
 
-Log images to the NeptuneAI experiment logger.
+#### 1. **_log_scalars(scalars, step)**
+记录标量指标。
 
-This function logs image data to Neptune.ai when a valid Neptune run is active. Images are organized under the specified group name.
+**技术说明:**
+- 支持多种指标类型
+- 自动记录时间序列数据
+- 适用于损失、精度等指标
 
-Log plots to the NeptuneAI experiment logger.
+**代码示例:**
+```python
+from ultralytics.utils.callbacks.neptune import _log_scalars
 
-Initialize NeptuneAI run and log hyperparameters before training starts.
-
-Log training metrics and learning rate at the end of each training epoch.
-
-Log model info and validation metrics at the end of each fit epoch.
-
-Log validation images at the end of validation.
-
-Log final results, plots, and model weights at the end of training.
-
-**Examples:**
-
-Example 1 (typescript):
-```typescript
-def _log_scalars(scalars: dict, step: int = 0) -> None
+# 记录训练指标
+metrics = {
+    "mAP": 0.85,
+    "precision": 0.88,
+    "recall": 0.82
+}
+_log_scalars(metrics, step=100)
 ```
 
-Example 2 (json):
-```json
->>> metrics = {"mAP": 0.85, "loss": 0.32}
->>> _log_scalars(metrics, step=100)
+#### 2. **_log_images(imgs_dict, group)**
+记录图像。
+
+**功能说明:**
+- 按组组织图像
+- 支持批量上传
+- 自动命名和分类
+
+**代码示例:**
+```python
+# 记录验证图像
+images = {
+    "predictions": "runs/val/pred.jpg",
+    "ground_truth": "runs/val/true.jpg"
+}
+_log_images(images, group="validation")
 ```
 
-Example 3 (json):
-```json
-def _log_scalars(scalars: dict, step: int = 0) -> None:
-    """Log scalars to the NeptuneAI experiment logger.
+#### 3. **_log_plot(plot, name)**
+记录图表。
 
-    Args:
-        scalars (dict): Dictionary of scalar values to log to NeptuneAI.
-        step (int, optional): The current step or iteration number for logging.
+**功能说明:**
+- 记录 matplotlib 图表
+- 保存为图像格式
+- 自动添加到实验
 
-    Examples:
-        >>> metrics = {"mAP": 0.85, "loss": 0.32}
-        >>> _log_scalars(metrics, step=100)
-    """
-    if run:
-        for k, v in scalars.items():
-            run[k].append(value=v, step=step)
+### 🎯 Neptune 集成示例
+
+#### 1. **安装和配置**
+
+```bash
+pip install neptune-client
 ```
 
-Example 4 (typescript):
-```typescript
-def _log_images(imgs_dict: dict, group: str = "") -> None
+```python
+import neptune
+
+# 初始化 Neptune
+run = neptune.init_run(
+    project="my-org/yolo11-experiments",
+    api_token="your-api-token"
+)
 ```
+
+#### 2. **完整训练流程**
+
+```python
+from ultralytics import YOLO
+import neptune
+
+# 初始化 Neptune run
+run = neptune.init_run(
+    project="yolo11-experiments",
+    name="experiment-1",
+    tags=["yolo11", "object-detection"],
+    parameters={
+        "learning_rate": 0.01,
+        "epochs": 100,
+        "batch_size": 16
+    }
+)
+
+# 训练模型
+model = YOLO("yolo11n.pt")
+results = model.train(
+    data="coco8.yaml",
+    epochs=100,
+    imgsz=640
+)
+
+# 记录最终结果
+run["results/mAP"] = results.results_dict.get("metrics/mAP50(B)")
+run["results/precision"] = results.results_dict.get("metrics/precision(B)")
+
+# 上传模型
+run["model"].upload("runs/train/exp/weights/best.pt")
+
+# 结束 run
+run.stop()
+```
+
+### 📊 高级功能
+
+#### 1. **模型版本管理**
+
+```python
+# 记录模型版本
+run["model/version"] = "v1.0"
+run["model/architecture"] = "yolo11n"
+run["model/framework"] = "ultralytics"
+
+# 上传多个模型
+run["models/best"].upload("runs/train/exp/weights/best.pt")
+run["models/last"].upload("runs/train/exp/weights/last.pt")
+```
+
+#### 2. **自定义指标**
+
+```python
+# 记录自定义指标
+run["custom/inference_time"] = 0.025
+run["custom/model_size"] = 6.3  # MB
+
+# 记录指标序列
+for epoch in range(100):
+    run["train/loss"].append(loss_value)
+    run["val/mAP"].append(map_value)
+```
+
+#### 3. **Artifacts 管理**
+
+```python
+# 保存数据集配置
+from neptune.types import File
+
+run["dataset/config"].upload("coco8.yaml")
+run["dataset/sample"].upload("data/sample.jpg")
+
+# 记录数据集信息
+run["dataset/size"] = 1000
+run["dataset/classes"] = ["person", "car", "dog"]
+```
+
+### 🎯 实际应用
+
+#### 1. **实验对比**
+
+```python
+# 运行多个实验
+experiments = []
+for lr in [0.001, 0.01, 0.1]:
+    run = neptune.init_run(
+        project="yolo11-experiments",
+        name=f"lr-{lr}",
+        tags=["hyperparameter-sweep"]
+    )
+
+    model = YOLO("yolo11n.pt")
+    model.train(data="coco8.yaml", epochs=50, lr0=lr)
+
+    experiments.append(run)
+
+# 在 Neptune Dashboard 对比
+# https://app.neptune.ai/
+```
+
+#### 2. **协作和分享**
+
+```python
+# 分享实验链接
+run_url = run.get_url()
+print(f"查看实验: {run_url}")
+
+# 添加协作者
+# 在 Neptune 项目设置中添加团队成员
+```
+
+### ⚠️ 注意事项
+
+1. **API Token:**
+   - 保存 API Token 到环境变量
+   - 不要硬编码在代码中
+   - 定期轮换 Token
+
+2. **数据隐私:**
+   - 检查上传的数据和图像
+   - 使用私有项目保护敏感数据
+   - 遵守数据保护法规
+
+3. **存储管理:**
+   - 注意 Neptune 存储配额
+   - 定期清理旧的实验
+   - 使用标签和描述组织实验
 
 ---
 
-## Ultralytics VS Code 扩展 - Ultralytics YOLO 文档
+## Ultralytics VS Code 扩展
 
 **URL:** https://docs.ultralytics.com/zh/integrations/vscode/
 
-**Contents:**
-- Ultralytics VS Code 扩展
-- 特性与优势
-- 灵感来自 Ultralytics 社区
-- 为什么选择 VS Code？
-- 安装扩展
-  - 在 VS Code 中安装
-  - 从 VS Code 扩展市场安装
-- 使用 Ultralytics-Snippets 扩展
-  - 概述
-  - 代码片段字段
+### 📋 概述
 
-观看： 如何使用 Ultralytics Visual Studio Code 扩展 | 即用型代码片段 | Ultralytics YOLO 🎉
+Ultralytics VS Code 扩展为 Visual Studio Code 提供了 YOLO 代码片段和智能完成功能,帮助开发者更快速地编写代码。
 
-✅ 您是一位数据科学家或机器学习工程师，正在使用Ultralytics构建计算机视觉应用程序吗？
+### 🔧 安装
 
-✅ 您是否总是忘记 导出、预测、训练、track 或 验证 方法的参数或默认值？
+#### 方法 1: 从 VS Code 市场安装
 
-✅ 想开始使用Ultralytics，希望有一种更容易的方式来引用或运行代码示例？
+1. 打开 VS Code
+2. 按 `Ctrl+Shift+X` 打开扩展面板
+3. 搜索 "Ultralytics-snippets"
+4. 点击安装
 
-✅ 希望在使用Ultralytics时加快开发周期吗？
+#### 方法 2: 从命令行安装
 
-如果您使用 Visual Studio Code 并且对上述任何问题回答“是”，那么 Ultralytics-snippets VS Code 扩展程序将为您提供帮助！请继续阅读以了解有关该扩展程序的更多信息、如何安装以及如何使用它。
+```bash
+code --install-extension ultralytics.ultralytics-snippets
+```
 
-在 20 秒内使用 Ultralytics YOLO 运行示例代码！🚀
+### 🎯 主要功能
 
-构建此扩展的灵感来自 Ultralytics 社区。社区中关于类似主题和示例的问题推动了该项目的发展。此外，许多 Ultralytics 团队成员使用 VS Code 来加速他们的工作 ⚡。
+#### 1. **代码片段**
 
-Visual Studio Code 在全球开发者中极受欢迎，并在 Stack Overflow 开发者调查中于 2021、2022、2023 和 2024 年被评为最受欢迎的编辑器。 鉴于 VS Code 的高度自定义性、内置功能、广泛的兼容性和可扩展性，如此多的开发者使用它也就不足为奇了。 考虑到它在更广泛的开发者社区以及 Ultralytics Discord、Discourse、Reddit 和 GitHub 社区中的受欢迎程度，构建一个 VS Code 扩展程序来帮助简化您的工作流程并提高您的工作效率是很有意义的。
+所有代码片段前缀为 `ultra`,输入后显示可用片段列表。
 
-想让我们知道您使用什么来开发代码吗？请访问我们的 Discourse 社区投票，让我们知道！当您在那里时，也许可以查看我们最喜欢的一些计算机视觉、机器学习、AI 和开发者表情包，甚至发布您最喜欢的！
+**常用代码片段:**
 
-任何允许安装 VS Code 扩展的代码环境 应该是 与 Ultralytics-snippets 扩展兼容。 发布扩展后，发现 neovim 可以与 VS Code 扩展兼容。要了解更多信息，请参阅 neovim 安装部分 的 Readme 文件中 Ultralytics-Snippets 仓库.
-
-导航到 VS Code 中的扩展菜单 或使用快捷键 Ctrl+Shift ⇑+x，然后搜索 Ultralytics-snippets。
-
-访问 VS Code 扩展市场 并搜索 Ultralytics-snippets，或直接访问 VS Code 市场上的扩展页面。
-
-点击 安装 按钮，并允许您的浏览器启动 VS Code 会话。
-
-Visual Studio Code 扩展市场页面，适用于 Ultralytics-Snippets
-
-🧠 智能代码完成： 借助为 Ultralytics API 量身定制的高级代码完成建议，更快、更准确地编写代码。
-
-⌛ 提高开发速度： 通过消除重复的编码任务并利用预先构建的代码块段代码片段，节省时间。
-
-🔬 改进的代码质量： 通过智能代码完成编写更清晰、更一致且无错误的代码。
-
-💎 精简的工作流程： 通过自动化常见任务，专注于项目的核心逻辑。
-
-仅当以下情况时，该扩展才会运行 语言模式 已针对 python 🐍 进行了配置。这是为了避免在使用任何其他文件类型时插入代码片段。所有代码片段的前缀都以开头 ultra，然后简单地输入 ultra 在安装扩展后，您的编辑器中将显示一个可能使用的代码片段列表。您也可以打开 VS Code 命令面板 使用 Ctrl+平移 ⇑+p 并运行命令 Snippets: Insert Snippet.
-
-许多代码段都有带有默认占位符值或名称的“字段”。例如，来自 预测 方法可以保存到名为的 python 变量中 r, results, detections, preds 或者开发者选择的任何其他方式，这就是为什么代码段包含“字段”。使用 Tab ⇥ 在插入代码片段后，如果您按下键盘上的Tab键，光标会在字段之间快速移动。一旦选中一个字段，输入新的变量名将更改该实例，以及该变量在代码片段中的所有其他实例！
-
-插入代码段后，重命名 model 作为 world_model 更新所有实例。按下 Tab ⇥ 移动到下一个字段，这将打开一个下拉菜单，允许选择模型比例，移动到下一个字段会提供另一个下拉菜单来选择 world 或 worldv2 模型变体。
-
-不需要输入代码片段的完整前缀，甚至不需要从代码片段的开头开始输入。请参见下面的图片示例。
-
-代码片段以尽可能最具描述性的方式命名，但这意味可能需要输入很多内容，如果目的是快速行动，那将适得其反 更快。幸运的是，VS Code 允许用户输入 ultra.example-yolo-predict, example-yolo-predict, yolo-predict，甚至是 ex-yolo-p 并且仍然可以访问到预期的代码片段选项！如果预期的代码片段是 实际上 ultra.example-yolo-predict-kwords，然后只使用键盘箭头 ↑ 或 ↓ 要突出显示所需代码片段并按下 输入 ↵ 或 Tab ⇥ 将插入正确的代码块。
-
-正在输入 ex-yolo-p 将 仍然 得到正确的代码片段。
-
-这些是 Ultralytics-snippets 扩展当前可用的代码片段类别。将来会添加更多，因此请务必检查更新并启用该扩展的自动更新。如果您认为缺少任何内容，您还可以请求添加其他代码片段。
-
-字段 ultra.examples 对于任何希望学习如何开始使用 Ultralytics YOLO 的基础知识的人来说，代码片段都非常有用。示例代码片段旨在插入后运行（有些还具有下拉选项）。此示例显示在动画中 最高 在本页中，插入代码片段后，所有代码都会被选中并使用以下方式进行交互式运行 平移 ⇑+输入 ↵.
-
-就像动画显示的那样 最高 在本页中，您可以使用代码片段 ultra.example-yolo-predict 要插入以下代码示例。插入后，唯一可配置的选项是模型比例，可以是以下任何一种： n, s, m, l或 x.
-
-除了以下代码片段之外，其他代码片段的目标是 ultra.examples 是为了在使用 Ultralytics 时，使开发更容易和更快。一个常见的代码块，可以在许多项目中使用的，是迭代列表。 Results 从使用模型返回 预测 method。这个 ultra.result-loop 代码片段可以对此有所帮助。
-
-使用 ultra.result-loop 将插入以下默认代码（包括注释）。
-
-然而，由于 Ultralytics 支持众多 任务，当 处理推理结果 还有其他的 Results 您可能希望访问的属性，即 代码片段字段 将会很强大。
-
-跳转到 boxes 字段，会出现一个下拉菜单，允许根据需要选择另一个属性。
-
-所有各种 Ultralytics 都有超过 💯 个关键字参数 任务 和 模式！需要记住的内容太多了，如果参数是，很容易忘记 save_frame 或 save_frames （这绝对是 save_frames 顺便说一句）。这是 ultra.kwargs 代码片段可以提供帮助！
-
-要插入 预测 method，包括所有 推理参数，使用 ultra.kwargs-predict，它将插入以下代码（包括注释）。
-
-此代码段包含所有关键字参数的字段，但也包含 model 和 src 如果您在代码中使用了不同的变量。 在包含关键字参数的每一行上，都包含一个简要说明以供参考。
-
-了解有哪些代码片段可用的最佳方式是下载并安装扩展，然后亲自尝试！如果您想提前查看列表，可以访问 repo 或 VS Code marketplace 上的扩展页面，以查看所有可用代码片段的表格。
-
-VS Code 的 Ultralytics-Snippets 扩展旨在帮助数据科学家和机器学习工程师更高效地使用 Ultralytics YOLO 构建计算机视觉应用程序。通过提供预构建的代码片段和有用的示例，我们帮助您专注于最重要的事情：创建创新解决方案。请访问 VS Code 市场上的扩展页面 并留下评论，分享您的反馈。⭐
-
-可以使用 Ultralytics-Snippets repo 上的 Issues 请求新的代码片段。
-
-VS Code 使用组合键 Ctrl+Space 在预览窗口中显示更多/更少的信息。如果在键入代码片段前缀时没有看到片段预览，使用此组合键应该可以恢复预览。
-
-如果您使用 VS Code，并且开始看到提示您安装 Ultralytics-snippets 扩展的消息，但又不想再看到该消息，则有两种方法可以禁用此消息。
-
-安装 Ultralytics-snippets，此消息将不再显示 😆！
-
-您可以使用 yolo settings vscode_msg False 禁用显示消息，而无需安装扩展。您可以了解更多关于 Ultralytics 设置 在 快速入门 页面，如果您不熟悉。
-
-访问 Ultralytics-snippets 存储库 并打开 Issue 或 Pull Request！
-
-与任何其他 VS Code 扩展一样，您可以通过导航到 VS Code 中的“扩展”菜单来卸载它。在菜单中找到 Ultralytics-snippets 扩展，然后单击齿轮图标 (⚙)，再单击“卸载”以删除该扩展。
-
-**Examples:**
-
-Example 1 (python):
 ```python
+# 快速开始示例
+ultra.example-yolo-predict
+# 生成:
 from ultralytics import ASSETS, YOLO
 
 model = YOLO("yolo11n.pt", task="detect")
@@ -822,41 +1046,195 @@ results = model(source=ASSETS / "bus.jpg")
 
 for result in results:
     print(result.boxes.data)
-    # result.show()  # uncomment to view each result image
 ```
 
-Example 2 (markdown):
-```markdown
-# reference https://docs.ultralytics.com/modes/predict/#working-with-results
+```python
+# 结果循环
+ultra.result-loop
+# 生成:
+for result in results:
+    result.boxes.data
+```
+
+```python
+# 所有预测参数
+ultra.kwargs-predict
+# 生成完整的参数列表和注释
+```
+
+#### 2. **智能完成**
+
+- 自动补全函数名
+- 参数提示
+- 文档集成
+
+#### 3. **可配置字段**
+
+使用 `Tab` 键在字段间快速移动:
+
+```python
+# 输入: ultra.example-yolo-predict
+# 结果:
+model = YOLO("yolo11n.pt")  # 可配置模型
+results = model(source=...)   # Tab 到下一个字段
+```
+
+### 📊 代码片段类别
+
+#### 1. **基础示例 (ultra.examples)**
+
+```python
+# 预测示例
+ultra.example-yolo-predict
+
+# 训练示例
+ultra.example-yolo-train
+
+# 验证示例
+ultra.example-yolo-val
+
+# 导出示例
+ultra.example-yolo-export
+```
+
+#### 2. **结果处理**
+
+```python
+# 结果循环
+ultra.result-loop
+
+# 提取框
+ultra.result-boxes
+
+# 提取掩码
+ultra.result-masks
+
+# 提取关键点
+ultra.result-keypoints
+```
+
+#### 3. **完整参数列表**
+
+```python
+# 预测参数
+ultra.kwargs-predict
+
+# 训练参数
+ultra.kwargs-train
+
+# 验证参数
+ultra.kwargs-val
+
+# 导出参数
+ultra.kwargs-export
+```
+
+### 🎯 实际应用示例
+
+#### 1. **快速原型开发**
+
+```python
+# 使用代码片段快速开始
+# 输入: ultra.example-yolo-predict
+
+from ultralytics import ASSETS, YOLO
+
+model = YOLO("yolo11n.pt", task="detect")
+results = model(source=ASSETS / "bus.jpg")
 
 for result in results:
     result.boxes.data  # torch.Tensor array
 ```
 
-Example 3 (sql):
-```sql
-model.predict(
-    source=src,  # (str, optional) source directory for images or videos
-    imgsz=640,  # (int | list) input images size as int or list[w,h] for predict
-    conf=0.25,  # (float) minimum confidence threshold
-    iou=0.7,  # (float) intersection over union (IoU) threshold for NMS
-    vid_stride=1,  # (int) video frame-rate stride
-    stream_buffer=False,  # (bool) buffer incoming frames in a queue (True) or only keep the most recent frame (False)
-    visualize=False,  # (bool) visualize model features
-    augment=False,  # (bool) apply image augmentation to prediction sources
-    agnostic_nms=False,  # (bool) class-agnostic NMS
-    classes=None,  # (int | list[int], optional) filter results by class, i.e. classes=0, or classes=[0,2,3]
-    retina_masks=False,  # (bool) use high-resolution segmentation masks
-    embed=None,  # (list[int], optional) return feature vectors/embeddings from given layers
-    show=False,  # (bool) show predicted images and videos if environment allows
-    save=True,  # (bool) save prediction results
-    save_frames=False,  # (bool) save predicted individual video frames
-    save_txt=False,  # (bool) save results as .txt file
-    save_conf=False,  # (bool) save results with confidence scores
-    save_crop=False,  # (bool) save cropped images with results
-    stream=False,  # (bool) for processing long videos or numerous images with reduced memory usage by returning a generator
-    verbose=True,  # (bool) enable/disable verbose inference logging in the terminal
+#### 2. **批量处理**
+
+```python
+# 输入: ultra.result-loop
+
+# 添加自定义逻辑
+for result in results:
+    boxes = result.boxes.data
+    for box in boxes:
+        x1, y1, x2, y2, conf, cls = box
+        print(f"检测到 {model.names[int(cls)]}, 置信度: {conf:.2f}")
+```
+
+#### 3. **自定义训练**
+
+```python
+# 输入: ultra.kwargs-train
+
+# 修改关键参数
+model.train(
+    data="custom.yaml",
+    epochs=200,          # 增加训练轮数
+    imgsz=1280,         # 提高图像分辨率
+    batch=32,           # 调整批量大小
+    lr0=0.001,          # 自定义学习率
+    lrf=0.01,           # 最终学习率因子
+    momentum=0.937,     # 动量
+    weight_decay=0.0005 # 权重衰减
 )
 ```
 
----
+### 💡 使用技巧
+
+#### 1. **快速访问**
+
+- 不需要输入完整前缀
+- 可以输入部分关键词
+- 使用 `Tab` 键快速插入
+
+```python
+# 以下都可以触发代码片段:
+ultra.example-yolo-predict
+example-yolo-predict
+yolo-predict
+ex-yolo-p
+```
+
+#### 2. **字段导航**
+
+- 按 `Tab` 跳转到下一个字段
+- 按 `Shift+Tab` 返回上一个字段
+- 使用下拉菜单选择选项
+
+#### 3. **自定义配置**
+
+```json
+// settings.json
+{
+    "ultralytics.snippets.enable": true,
+    "ultralytics.snippets.completions": true,
+    "ultralytics.vscode_msg": true
+}
+```
+
+### ⚠️ 注意事项
+
+1. **Python 语言模式:**
+   - 代码片段只在 Python 文件中可用
+   - 确保文件扩展名为 `.py`
+   - VS Code 语言模式设置为 Python
+
+2. **版本兼容:**
+   - 支持 YOLOv8、YOLOv10、YOLO11
+   - 定期更新扩展以获取最新功能
+   - 检查扩展版本兼容性
+
+3. **禁用消息:**
+
+```python
+# 方法 1: 安装扩展
+# 消息自动禁用
+
+# 方法 2: 禁用消息
+from ultralytics import settings
+settings.update({"vscode_msg": False})
+```
+
+### 🔗 相关资源
+
+- **扩展页面:** [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ultralytics.ultralytics-snippets)
+- **GitHub:** [Ultralytics-Snippets](https://github.com/ultralytics/ultralytics-snippets)
+- **文档:** [Ultralytics 文档](https://docs.ultralytics.com)

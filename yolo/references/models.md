@@ -494,6 +494,960 @@ Example 4 (markdown):
 
 **URL:** https://docs.ultralytics.com/zh/integrations/ncnn/
 
+---
+
+## 🔧 YOLO11 模型架构详解
+
+### 目录
+- [YOLO11 模型家族](#yolo11-模型家族)
+- [网络架构深度解析](#网络架构深度解析)
+- [模型选择指南](#模型选择指南)
+- [模型微调与迁移学习](#模型微调与迁移学习)
+- [模型部署优化](#模型部署优化)
+
+### YOLO11 模型家族
+
+YOLO11 提供了从超轻量级到高精度的完整模型系列，满足不同应用场景的需求。
+
+#### 模型系列对比
+
+| 模型 | 参数量 | 层数 | mAP@0.5-95 | 推理速度 (V100) | 模型大小 | FLOPs | 适用场景 |
+|------|--------|------|------------|-----------------|----------|-------|----------|
+| **YOLO11n** | 2.6M | 195 | 37.9% | 1.5ms | 6MB | 6.7G | 移动端、边缘AI、实时应用 |
+| **YOLO11s** | 9.4M | 213 | 44.6% | 2.5ms | 20MB | 21.8G | 嵌入式设备、IoT应用 |
+| **YOLO11m** | 20.1M | 265 | 50.4% | 4.5ms | 45MB | 70.7G | 服务器、高精度需求 |
+| **YOLO11l** | 25.3M | 308 | 52.1% | 6.0ms | 58MB | 111.7G | 高性能服务器、云端部署 |
+| **YOLO11x** | 56.9M | 451 | 53.9% | 11.0ms | 116MB | 261.1G | 最高精度、研究基准 |
+
+#### 模型性能曲线
+
+```python
+import matplotlib.pyplot as plt
+import numpy as np
+
+# 模型性能数据
+models = ['YOLO11n', 'YOLO11s', 'YOLO11m', 'YOLO11l', 'YOLO11x']
+params = [2.6, 9.4, 20.1, 25.3, 56.9]  # 参数量（百万）
+mAP = [37.9, 44.6, 50.4, 52.1, 53.9]    # mAP (%)
+speed = [1.5, 2.5, 4.5, 6.0, 11.0]     # 推理速度 (ms)
+
+# 创建图表
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+
+# 参数量 vs mAP
+ax1.plot(params, mAP, 'o-', linewidth=2, markersize=8, color='#2E86AB')
+ax1.set_xlabel('参数量 (百万)', fontsize=12)
+ax1.set_ylabel('mAP@0.5-95 (%)', fontsize=12)
+ax1.set_title('模型大小 vs 精度', fontsize=14, fontweight='bold')
+ax1.grid(True, alpha=0.3)
+for i, model in enumerate(models):
+    ax1.annotate(model, (params[i], mAP[i]), textcoords="offset points", xytext=(0,10), ha='center')
+
+# 推理速度 vs mAP
+ax2.plot(speed, mAP, 's-', linewidth=2, markersize=8, color='#A23B72')
+ax2.set_xlabel('推理速度 (ms)', fontsize=12)
+ax2.set_ylabel('mAP@0.5-95 (%)', fontsize=12)
+ax2.set_title('速度 vs 精度权衡', fontsize=14, fontweight='bold')
+ax2.grid(True, alpha=0.3)
+for i, model in enumerate(models):
+    ax2.annotate(model, (speed[i], mAP[i]), textcoords="offset points", xytext=(0,10), ha='center')
+
+plt.tight_layout()
+plt.savefig('yolo11_performance_curve.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("模型性能分析:")
+print(f"最佳性价比: YOLO11s (参数量 {params[1]}M, mAP {mAP[1]}%, 速度 {speed[1]}ms)")
+print(f"最高精度: YOLO11x (mAP {mAP[-1]}%)")
+print(f"最快速度: YOLO11n ({speed[0]}ms)")
+```
+
+### 网络架构深度解析
+
+#### 整体架构概览
+
+YOLO11 采用先进的 CNN 架构，主要包含以下几个部分：
+
+```
+输入图像 (640x640x3)
+    ↓
+┌─────────────────────────────────┐
+│  骨干网络 (Backbone)            │
+│  - Conv模块 (特征提取)          │
+│  - C3k2模块 (高效跨阶段连接)    │
+│  - SPPF (快速空间金字塔池化)    │
+└─────────────────────────────────┘
+    ↓ 多尺度特征
+┌─────────────────────────────────┐
+│  颈部网络 (Neck)                │
+│  - PANet结构 (路径聚合网络)     │
+│  - 上采样 + 下采样              │
+│  - 特征融合                     │
+└─────────────────────────────────┘
+    ↓ 融合特征
+┌─────────────────────────────────┐
+│  检测头 (Head)                  │
+│  - 分类分支 (类别预测)          │
+│  - 回归分支 (边界框预测)        │
+│  - DFL (分布焦点损失)           │
+└─────────────────────────────────┘
+    ↓
+输出检测结果
+```
+
+#### 核心模块详解
+
+##### 1. C3k2 模块（优化的 CSP 模块）
+
+```python
+import torch
+import torch.nn as nn
+
+class C3k2(nn.Module):
+    """
+    C3k2 模块 - YOLO11 的核心构建块
+    
+    这是对 CSP (Cross Stage Partial) 模块的优化版本，通过更高效的特征
+    融合策略减少计算量同时保持甚至提升精度。
+    
+    Args:
+        c1 (int): 输入通道数
+        c2 (int): 输出通道数
+        n (int): 重复次数，默认为 1
+        csp (int): CSP 因子，默认为 n
+        e (float): 扩展系数，默认为 0.5
+    """
+    
+    def __init__(self, c1, c2, n=1, csp=int, e=0.5):
+        super().__init__()
+        c_ = int(c2 * e)  # 隐藏通道数
+        
+        # 主分支：使用多个卷积块
+        self.cv1 = Conv(c1, c_, 1, 1)  # 1x1 卷积降维
+        self.cv2 = Conv(c1, c_, 1, 1)  # 1x1 卷积降维
+        self.cv3 = Conv(2 * c_, c2, 1)  # 1x1 卷积升维
+        
+        # 重复的瓶颈块
+        self.m = nn.Sequential(*(Bottleneck(c_, c_, e=1.0) for _ in range(n)))
+    
+    def forward(self, x):
+        """前向传播"""
+        # 分割为两个分支
+        y1 = self.cv1(x)
+        y1 = self.m(y1)
+        y2 = self.cv2(x)
+        
+        # 拼接并融合
+        return self.cv3(torch.cat((y1, y2), dim=1))
+
+class Bottleneck(nn.Module):
+    """
+    瓶颈块 - C3k2 的基础组件
+    
+    使用 1x1 + 3x3 卷积组合，在减少参数的同时保持表达能力。
+    """
+    
+    def __init__(self, c1, c2, e=1.0):
+        super().__init__()
+        c_ = int(c2 * e)
+        
+        # 第一个卷积：1x1 降维
+        self.cv1 = Conv(c1, c_, 1, 1)
+        
+        # 第二个卷积：3x3 特征提取
+        self.cv2 = Conv(c_, c2, 3, 1)
+    
+    def forward(self, x):
+        """前向传播 - 使用残差连接"""
+        return x + self.cv2(self.cv1(x))
+
+class Conv(nn.Module):
+    """
+    标准卷积块：Conv2d + BatchNorm + SiLU
+    
+    这是 YOLO11 中最基本的卷积单元，组合了卷积、批归一化和激活函数。
+    """
+    
+    def __init__(self, c1, c2, k=1, s=1, p=None):
+        super().__init__()
+        # 卷积层
+        self.conv = nn.Conv2d(c1, c2, k, s, autopad(k, p), bias=False)
+        # 批归一化
+        self.bn = nn.BatchNorm2d(c2)
+        # SiLU 激活函数
+        self.act = nn.SiLU()
+    
+    def forward(self, x):
+        """前向传播"""
+        return self.act(self.bn(self.conv(x)))
+
+def autopad(k, p=None):
+    """
+    自动计算填充大小，保持输出尺寸与输入尺寸一致
+    
+    Args:
+        k: 卷积核大小
+        p: 填充大小（如果为 None 则自动计算）
+    """
+    if p is None:
+        p = k // 2 if isinstance(k, int) else [x // 2 for x in k]
+    return p
+
+# 使用示例
+if __name__ == "__main__":
+    # 创建 C3k2 模块
+    c3k2 = C3k2(c1=256, c2=256, n=3)
+    
+    # 测试前向传播
+    x = torch.randn(1, 256, 64, 64)
+    y = c3k2(x)
+    print(f"输入形状: {x.shape}")
+    print(f"输出形状: {y.shape}")
+```
+
+##### 2. SPPF 模块（快速空间金字塔池化）
+
+```python
+class SPPF(nn.Module):
+    """
+    SPPF (Spatial Pyramid Pooling - Fast) 模块
+    
+    通过不同核大小的最大池化捕获多尺度特征，相比原始 SPP 更快。
+    这对于检测不同大小的目标非常重要。
+    
+    Args:
+        c1 (int): 输入通道数
+        c2 (int): 输出通道数
+        k (int): 池化核大小，默认为 5
+    """
+    
+    def __init__(self, c1, c2, k=5):
+        super().__init__()
+        c_ = c1 // 2  # 隐藏通道数
+        
+        # 1x1 卷积降维
+        self.cv1 = Conv(c1, c_, 1, 1)
+        # 1x1 卷积升维
+        self.cv2 = Conv(c_ * 4, c2, 1, 1)
+        
+        # 最大池化层（复用）
+        self.m = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
+    
+    def forward(self, x):
+        """前向传播"""
+        x = self.cv1(x)
+        
+        # 多尺度池化并拼接
+        y1 = self.m(x)
+        y2 = self.m(y1)
+        y3 = self.m(y2)
+        
+        # 拼接四个尺度的特征
+        return self.cv2(torch.cat((x, y1, y2, y3), 1))
+
+# 使用示例
+if __name__ == "__main__":
+    # 创建 SPPF 模块
+    sppf = SPPF(c1=512, c2=512, k=5)
+    
+    # 测试前向传播
+    x = torch.randn(1, 512, 20, 20)
+    y = sppf(x)
+    print(f"SPPF 输入形状: {x.shape}")
+    print(f"SPPF 输出形状: {y.shape}")
+```
+
+##### 3. 检测头（Detect Head）
+
+```python
+class DetectHead(nn.Module):
+    """
+    YOLO11 检测头
+    
+    负责预测边界框和类别概率。支持锚点机制和分布焦点损失（DFL）。
+    
+    Args:
+        nc (int): 类别数量
+        ch (tuple): 各检测层的通道数
+    """
+    
+    def __init__(self, nc=80, ch=()):
+        super().__init__()
+        self.nc = nc  # 类别数
+        self.nl = len(ch)  # 检测层数
+        self.reg_max = 16  # DFL 通道数
+        
+        # 计算 DFL 输出通道数
+        self.no = nc + self.reg_max * 4
+        
+        # 边界框回归分支
+        self.cv2 = nn.ModuleList(
+            nn.Sequential(Conv(x, c, 3), Conv(c, c, 3), nn.Conv2d(c, 4 * self.reg_max, 1))
+            for x, c in zip(ch, [max(16, x // 4) for x in ch])
+        )
+        
+        # 分类分支
+        self.cv3 = nn.ModuleList(
+            nn.Sequential(Conv(x, c, 3), Conv(c, c, 3), nn.Conv2d(c, self.nc, 1))
+            for x, c in zip(ch, [max(x, min(self.nc, 100)) for x in ch])
+        )
+        
+        # DFL 模块
+        self.dfl = DFL(self.reg_max) if self.reg_max > 1 else nn.Identity()
+
+class DFL(nn.Module):
+    """
+    分布焦点损失（Distribution Focal Loss）模块
+    
+    将边界框预测建模为分布，提高定位精度。
+    
+    Args:
+        c1 (int): 输入通道数
+    """
+    
+    def __init__(self, c1=16):
+        super().__init__()
+        self.c1 = c1
+        self.conv = nn.Conv2d(c1, 4, 1, bias=False)
+        self.bn = nn.BatchNorm2d(4)
+
+    def forward(self, x):
+        """前向传播"""
+        # 将分布转换为实际坐标
+        b, c, a = x.shape  # batch, channels, anchors
+        x = x.view(b, 4, self.c1, a).transpose(2, 1)
+        return self.bn(self.conv(xsoftmax(1))).view(b, 4, a)
+```
+
+#### 完整 YOLO11 模型构建
+
+```python
+from ultralytics import YOLO
+import torch
+
+class YOLO11Builder:
+    """YOLO11 模型构建器"""
+    
+    @staticmethod
+    def build_model(model_size='n', num_classes=80):
+        """
+        构建 YOLO11 模型
+        
+        Args:
+            model_size (str): 模型大小 ('n', 's', 'm', 'l', 'x')
+            num_classes (int): 类别数量
+            
+        Returns:
+            YOLO: 构建好的模型
+        """
+        model_path = f"yolo11{model_size}.pt"
+        model = YOLO(model_path)
+        
+        # 如果需要修改类别数
+        if num_classes != 80:
+            # 重建检测头
+            # 注意：实际使用时需要从配置文件重建
+            pass
+        
+        return model
+    
+    @staticmethod
+    def get_model_info(model):
+        """
+        获取模型详细信息
+        
+        Args:
+            model: YOLO 模型对象
+            
+        Returns:
+            dict: 模型信息
+        """
+        # 统计参数量
+        total_params = sum(p.numel() for p in model.parameters())
+        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        
+        # 获取模型结构
+        model_info = {
+            'total_params': total_params,
+            'trainable_params': trainable_params,
+            'model_size_mb': total_params * 4 / (1024 ** 2),  # 假设 float32
+            'architecture': str(type(model.model).__name__),
+            'task': model.task,
+            'names': model.names
+        }
+        
+        return model_info
+    
+    @staticmethod
+    def visualize_model(model, output_path='model_architecture.png'):
+        """
+        可视化模型架构
+        
+        Args:
+            model: YOLO 模型对象
+            output_path (str): 输出路径
+        """
+        # 使用 torchviz 或直接打印模型结构
+        print("\n" + "="*50)
+        print("YOLO11 模型架构")
+        print("="*50)
+        print(model.model)
+        
+        # 保存模型结构
+        with open(output_path.replace('.png', '.txt'), 'w') as f:
+            f.write(str(model.model))
+        
+        print(f"\n模型结构已保存至: {output_path.replace('.png', '.txt')}")
+
+# 使用示例
+if __name__ == "__main__":
+    # 构建模型
+    builder = YOLO11Builder()
+    model = builder.build_model(model_size='n', num_classes=80)
+    
+    # 获取模型信息
+    info = builder.get_model_info(model)
+    print("\n模型信息:")
+    for key, value in info.items():
+        print(f"  {key}: {value}")
+    
+    # 可视化模型
+    builder.visualize_model(model)
+```
+
+### 模型选择指南
+
+#### 根据应用场景选择模型
+
+```python
+def select_yolo11_model(application, constraints):
+    """
+    根据应用场景和约束条件选择最合适的 YOLO11 模型
+    
+    Args:
+        application (str): 应用类型
+        constraints (dict): 约束条件 {
+            'max_latency': float,  # 最大延迟 (ms)
+            'max_memory': int,     # 最大内存 (MB)
+            'min_accuracy': float  # 最小精度 (mAP)
+        }
+    
+    Returns:
+        str: 推荐的模型名称
+    """
+    
+    # 模型性能数据库
+    model_specs = {
+        'yolo11n': {'params': 2.6, 'latency': 1.5, 'memory': 6, 'mAP': 37.9},
+        'yolo11s': {'params': 9.4, 'latency': 2.5, 'memory': 20, 'mAP': 44.6},
+        'yolo11m': {'params': 20.1, 'latency': 4.5, 'memory': 45, 'mAP': 50.4},
+        'yolo11l': {'params': 25.3, 'latency': 6.0, 'memory': 58, 'mAP': 52.1},
+        'yolo11x': {'params': 56.9, 'latency': 11.0, 'memory': 116, 'mAP': 53.9}
+    }
+    
+    # 过滤满足约束的模型
+    valid_models = []
+    for model_name, specs in model_specs.items():
+        if (specs['latency'] <= constraints.get('max_latency', float('inf')) and
+            specs['memory'] <= constraints.get('max_memory', float('inf')) and
+            specs['mAP'] >= constraints.get('min_accuracy', 0)):
+            valid_models.append((model_name, specs))
+    
+    # 根据应用类型排序
+    if application == 'mobile':
+        # 优先选择小模型
+        valid_models.sort(key=lambda x: x[1]['params'])
+    elif application == 'realtime':
+        # 优先选择快速模型
+        valid_models.sort(key=lambda x: x[1]['latency'])
+    elif application == 'accuracy':
+        # 优先选择高精度模型
+        valid_models.sort(key=lambda x: -x[1]['mAP'])
+    
+    if valid_models:
+        return valid_models[0][0]
+    else:
+        return None
+
+# 应用场景示例
+scenarios = [
+    {
+        'name': '移动端应用',
+        'application': 'mobile',
+        'constraints': {'max_latency': 10, 'max_memory': 50, 'min_accuracy': 35}
+    },
+    {
+        'name': '实时监控',
+        'application': 'realtime',
+        'constraints': {'max_latency': 5, 'max_memory': 100, 'min_accuracy': 40}
+    },
+    {
+        'name': '高精度检测',
+        'application': 'accuracy',
+        'constraints': {'max_latency': 20, 'max_memory': 200, 'min_accuracy': 50}
+    }
+]
+
+print("YOLO11 模型选择建议:\n")
+for scenario in scenarios:
+    model = select_yolo11_model(
+        scenario['application'],
+        scenario['constraints']
+    )
+    print(f"{scenario['name']}: 推荐 {model}")
+```
+
+### 模型微调与迁移学习
+
+#### 迁移学习策略
+
+```python
+from ultralytics import YOLO
+import yaml
+
+class YOLO11TransferLearning:
+    """YOLO11 迁移学习工具"""
+    
+    def __init__(self, pretrained_path='yolo11n.pt'):
+        """
+        初始化迁移学习器
+        
+        Args:
+            pretrained_path (str): 预训练模型路径
+        """
+        self.model = YOLO(pretrained_path)
+        self.original_classes = self.model.nc
+    
+    def freeze_backbone(self, num_layers=10):
+        """
+        冻结骨干网络
+        
+        Args:
+            num_layers (int): 要冻结的层数
+        """
+        # 获取模型层
+        layers = list(self.model.model.modules())
+        
+        # 冻结前 num_layers 层
+        for i, layer in enumerate(layers[:num_layers]):
+            for param in layer.parameters():
+                param.requires_grad = False
+        
+        print(f"已冻结前 {num_layers} 层")
+    
+    def unfreeze_all(self):
+        """解冻所有层"""
+        for param in self.model.parameters():
+            param.requires_grad = True
+        print("已解冻所有层")
+    
+    def adapt_to_new_classes(self, new_classes_yaml, freeze_backbone=True):
+        """
+        适应新的类别集
+        
+        Args:
+            new_classes_yaml (str): 新数据集的配置文件
+            freeze_backbone (bool): 是否冻结骨干网络
+        """
+        # 读取新类别
+        with open(new_classes_yaml, 'r') as f:
+            data = yaml.safe_load(f)
+        
+        num_new_classes = data['nc']
+        
+        print(f"原始类别数: {self.original_classes}")
+        print(f"新类别数: {num_new_classes}")
+        
+        # 如果类别数不同，重建检测头
+        if num_new_classes != self.original_classes:
+            print(f"调整检测头以适应 {num_new_classes} 个类别...")
+            # 实际应用中，这里需要重建模型的检测头
+            # YOLO 会自动处理类别数的变化
+        
+        # 可选：冻结骨干网络
+        if freeze_backbone:
+            self.freeze_backbone(num_layers=10)
+    
+    def train_with_transfer_learning(self, data_yaml, epochs=50, **kwargs):
+        """
+        使用迁移学习训练模型
+        
+        Args:
+            data_yaml (str): 数据集配置文件
+            epochs (int): 训练轮数
+            **kwargs: 其他训练参数
+        """
+        # 设置默认参数
+        kwargs.setdefault('epochs', epochs)
+        kwargs.setdefault('batch', 16)
+        kwargs.setdefault('imgsz', 640)
+        kwargs.setdefault('lr0', 0.001)  # 较小的学习率
+        kwargs.setdefault('patience', 20)
+        
+        # 训练模型
+        results = self.model.train(data=data_yaml, **kwargs)
+        
+        return results
+    
+    def progressive_unfreeze(self, data_yaml, total_epochs=100):
+        """
+        渐进式解冻训练策略
+        
+        Args:
+            data_yaml (str): 数据集配置文件
+            total_epochs (int): 总训练轮数
+        """
+        # 第一阶段：冻结骨干网络，训练检测头
+        print("\n第一阶段: 冻结骨干网络")
+        self.freeze_backbone(num_layers=10)
+        
+        phase1_epochs = total_epochs // 3
+        self.train_with_transfer_learning(
+            data_yaml,
+            epochs=phase1_epochs,
+            lr0=0.001
+        )
+        
+        # 第二阶段：解冻所有层，微调整个网络
+        print("\n第二阶段: 解冻所有层")
+        self.unfreeze_all()
+        
+        phase2_epochs = total_epochs - phase1_epochs
+        self.train_with_transfer_learning(
+            data_yaml,
+            epochs=phase2_epochs,
+            lr0=0.0001  # 更小的学习率
+        )
+
+# 使用示例
+if __name__ == "__main__":
+    # 初始化迁移学习器
+    transfer_learner = YOLO11TransferLearning(pretrained_path='yolo11n.pt')
+    
+    # 适应新数据集
+    transfer_learner.adapt_to_new_classes(
+        new_classes_yaml='custom_data.yaml',
+        freeze_backbone=True
+    )
+    
+    # 方式1: 标准迁移学习
+    results = transfer_learner.train_with_transfer_learning(
+        data_yaml='custom_data.yaml',
+        epochs=50,
+        batch=16
+    )
+    
+    # 方式2: 渐进式解冻
+    # transfer_learner.progressive_unfreeze(
+    #     data_yaml='custom_data.yaml',
+    #     total_epochs=100
+    # )
+```
+
+### 模型部署优化
+
+#### 模型量化与压缩
+
+```python
+class YOLO11Optimizer:
+    """YOLO11 模型优化工具"""
+    
+    def __init__(self, model_path):
+        self.model = YOLO(model_path)
+    
+    def quantize_model(self, calibration_data, output_path='yolo11_quantized.onnx'):
+        """
+        量化模型以减小模型大小并提升推理速度
+        
+        Args:
+            calibration_data: 校准数据
+            output_path (str): 输出路径
+        """
+        # 导出为 ONNX 格式
+        onnx_path = self.model.export(format='onnx')
+        
+        # 使用 ONNX Runtime 量化
+        import onnx
+        from onnxruntime.quantization import quantize_dynamic, QuantType
+        
+        # 动态量化
+        quantize_dynamic(
+            onnx_path,
+            output_path,
+            weight_type=QuantType.QUInt8
+        )
+        
+        print(f"量化模型已保存至: {output_path}")
+        
+        # 比较模型大小
+        import os
+        original_size = os.path.getsize(onnx_path) / (1024 ** 2)
+        quantized_size = os.path.getsize(output_path) / (1024 ** 2)
+        
+        print(f"原始模型大小: {original_size:.2f} MB")
+        print(f"量化模型大小: {quantized_size:.2f} MB")
+        print(f"压缩比: {original_size / quantized_size:.2f}x")
+    
+    def prune_model(self, dataset, sparsity=0.3, output_path='yolo11_pruned.pt'):
+        """
+        剪枝模型以减少参数量
+        
+        Args:
+            dataset: 数据集
+            sparsity (float): 剪枝稀疏度
+            output_path (str): 输出路径
+        """
+        # 注意：实际应用中需要使用专门的剪枝工具
+        # 这里展示概念性实现
+        
+        print(f"剪枝稀疏度: {sparsity}")
+        print("剪枝后模型已保存至:", output_path)
+    
+    def optimize_for_device(self, device_type, output_dir='optimized_models'):
+        """
+        针对特定设备优化模型
+        
+        Args:
+            device_type (str): 设备类型 ('mobile', 'gpu', 'cpu')
+            output_dir (str): 输出目录
+        """
+        from pathlib import Path
+        output_dir = Path(output_dir)
+        output_dir.mkdir(exist_ok=True)
+        
+        if device_type == 'mobile':
+            # 导出为 TFLite
+            self.model.export(format='tflite', int8=True)
+            print("已导出为 TFLite 格式（INT8 量化）")
+        
+        elif device_type == 'gpu':
+            # 导出为 TensorRT
+            self.model.export(format='engine', half=True)
+            print("已导出为 TensorRT 格式（FP16）")
+        
+        elif device_type == 'cpu':
+            # 导出为 ONNX
+            self.model.export(format='onnx', simplify=True)
+            print("已导出为 ONNX 格式（简化）")
+        
+        elif device_type == 'apple':
+            # 导出为 CoreML
+            self.model.export(format='coreml', half=True)
+            print("已导出为 CoreML 格式")
+
+# 使用示例
+if __name__ == "__main__":
+    # 初始化优化器
+    optimizer = YOLO11Optimizer('yolo11n.pt')
+    
+    # 1. 量化模型
+    # optimizer.quantize_model(
+    #     calibration_data='calibration_images',
+    #     output_path='yolo11_quantized.onnx'
+    # )
+    
+    # 2. 针对不同设备优化
+    # optimizer.optimize_for_device('mobile', output_dir='mobile_models')
+    # optimizer.optimize_for_device('gpu', output_dir='gpu_models')
+    # optimizer.optimize_for_device('cpu', output_dir='cpu_models')
+```
+
+#### 模型基准测试
+
+```python
+class ModelBenchmark:
+    """YOLO11 模型基准测试工具"""
+    
+    def __init__(self, model_path):
+        self.model = YOLO(model_path)
+    
+    def benchmark_inference(self, test_images, warmup_runs=10, test_runs=100):
+        """
+        基准测试推理性能
+        
+        Args:
+            test_images: 测试图像列表
+            warmup_runs (int): 预热轮数
+            test_runs (int): 测试轮数
+            
+        Returns:
+            dict: 基准测试结果
+        """
+        import time
+        import numpy as np
+        
+        # 预热
+        print("预热模型...")
+        for i in range(warmup_runs):
+            img = test_images[i % len(test_images)]
+            _ = self.model.predict(img, verbose=False)
+        
+        # 测试推理速度
+        print("测试推理速度...")
+        latencies = []
+        
+        for i in range(test_runs):
+            img = test_images[i % len(test_images)]
+            
+            start_time = time.time()
+            _ = self.model.predict(img, verbose=False)
+            end_time = time.time()
+            
+            latencies.append((end_time - start_time) * 1000)  # 转换为毫秒
+        
+        # 计算统计信息
+        results = {
+            'mean_latency_ms': np.mean(latencies),
+            'std_latency_ms': np.std(latencies),
+            'min_latency_ms': np.min(latencies),
+            'max_latency_ms': np.max(latencies),
+            'p50_latency_ms': np.percentile(latencies, 50),
+            'p95_latency_ms': np.percentile(latencies, 95),
+            'p99_latency_ms': np.percentile(latencies, 99),
+            'fps': 1000 / np.mean(latencies)
+        }
+        
+        return results
+    
+    def print_benchmark_results(self, results):
+        """打印基准测试结果"""
+        print("\n" + "="*50)
+        print("基准测试结果")
+        print("="*50)
+        print(f"平均延迟: {results['mean_latency_ms']:.2f} ms")
+        print(f"标准差: {results['std_latency_ms']:.2f} ms")
+        print(f"最小延迟: {results['min_latency_ms']:.2f} ms")
+        print(f"最大延迟: {results['max_latency_ms']:.2f} ms")
+        print(f"P50 延迟: {results['p50_latency_ms']:.2f} ms")
+        print(f"P95 延迟: {results['p95_latency_ms']:.2f} ms")
+        print(f"P99 延迟: {results['p99_latency_ms']:.2f} ms")
+        print(f"平均 FPS: {results['fps']:.2f}")
+    
+    def compare_models(self, model_paths, test_images):
+        """
+        比较多个模型的性能
+        
+        Args:
+            model_paths (list): 模型路径列表
+            test_images: 测试图像列表
+            
+        Returns:
+            DataFrame: 比较结果
+        """
+        import pandas as pd
+        
+        results = []
+        
+        for model_path in model_paths:
+            print(f"\n测试模型: {model_path}")
+            
+            # 创建基准测试器
+            benchmark = ModelBenchmark(model_path)
+            
+            # 运行基准测试
+            perf_results = benchmark.benchmark_inference(test_images)
+            
+            # 记录结果
+            results.append({
+                'model': Path(model_path).stem,
+                **perf_results
+            })
+        
+        # 创建 DataFrame
+        df = pd.DataFrame(results)
+        
+        # 按平均延迟排序
+        df = df.sort_values('mean_latency_ms')
+        
+        return df
+
+# 使用示例
+if __name__ == "__main__":
+    # 准备测试图像
+    test_images = ['test1.jpg', 'test2.jpg', 'test3.jpg']
+    
+    # 创建基准测试器
+    benchmark = ModelBenchmark('yolo11n.pt')
+    
+    # 运行基准测试
+    results = benchmark.benchmark_inference(test_images)
+    
+    # 打印结果
+    benchmark.print_benchmark_results(results)
+    
+    # 比较多个模型
+    # models = ['yolo11n.pt', 'yolo11s.pt', 'yolo11m.pt']
+    # comparison = benchmark.compare_models(models, test_images)
+    # print("\n模型比较:")
+    # print(comparison)
+```
+
+---
+
+## 📚 YOLO11 模型常见问题解答
+
+### Q1: YOLO11 的模型结构相比 YOLOv8 有何改进？
+
+**答:** 主要改进包括：
+
+1. **C3k2 模块**：更高效的特征融合
+2. **优化的检测头**：改进的分类和回归分支
+3. **更好的特征金字塔**：增强的多尺度特征提取
+4. **改进的训练策略**：更稳定的收敛过程
+
+### Q2: 如何选择合适的模型大小？
+
+**答:** 选择依据：
+
+- **移动端/边缘设备**：YOLO11n (2.6M 参数)
+- **嵌入式系统**：YOLO11s (9.4M 参数)
+- **服务器应用**：YOLO11m/l (20-25M 参数)
+- **最高精度**：YOLO11x (56.9M 参数)
+
+### Q3: 如何在自定义数据集上训练 YOLO11？
+
+**答:** 训练流程：
+
+1. 准备 YOLO 格式数据集
+2. 创建 data.yaml 配置文件
+3. 选择合适的预训练模型
+4. 使用 `model.train(data='data.yaml', epochs=100)` 训练
+5. 使用 `model.val()` 评估模型
+
+### Q4: 模型微调时应该冻结哪些层？
+
+**答:** 冻结策略：
+
+- **初期训练**：冻结骨干网络前 10 层，只训练检测头
+- **中期训练**：解冻部分骨干网络层
+- **后期微调**：解冻所有层，使用小学习率
+
+### Q5: 如何加速 YOLO11 的推理速度？
+
+**答:** 加速方法：
+
+1. **模型导出**：使用 ONNX/TensorRT 格式
+2. **模型量化**：INT8 量化
+3. **输入优化**：减小输入尺寸
+4. **硬件加速**：使用 GPU/TPU
+5. **批处理**：批量推理提升吞吐量
+
+---
+
+## 🎯 YOLO11 模型最佳实践总结
+
+1. **模型选择**：根据应用场景和硬件约束选择合适的模型大小
+2. **迁移学习**：使用预训练模型加速收敛
+3. **渐进式训练**：分阶段解冻获得更好的微调效果
+4. **模型优化**：量化、剪枝等优化技术提升部署性能
+5. **性能测试**：全面基准测试确保满足实际需求
+6. **持续迭代**：根据实际应用反馈持续优化模型
+
+---
+
+*本指南基于 YOLO11 最新版本编写，涵盖模型架构、选择、训练和优化的完整知识体系。*
+
+
 **Contents:**
 - 如何从 YOLO11 导出到 NCNN 以实现平滑部署
 - 为什么要导出到 NCNN？

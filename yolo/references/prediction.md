@@ -1492,6 +1492,769 @@ results = model(source)  # list of Results objects
 
 ---
 
+---
+
+## 🚀 YOLO11 推理高级优化指南
+
+### 目录
+- [YOLO11 推理核心优化](#yolo11-推理核心优化)
+- [性能调优参数详解](#性能调优参数详解)
+- [实际应用场景](#实际应用场景)
+- [多线程与批量推理](#多线程与批量推理)
+- [结果处理最佳实践](#结果处理最佳实践)
+
+### YOLO11 推理核心优化
+
+YOLO11 在推理性能方面相比 YOLOv8 有显著提升，主要体现在以下几个方面：
+
+1. **更高效的架构设计**：优化的 C3k2 模块和 SPPF 模块
+2. **改进的 NMS 策略**：更快的后处理速度
+3. **更好的内存管理**：支持更大的批次大小
+4. **增强的量化支持**：FP16/INT8 推理优化
+
+#### YOLO11 推理完整示例
+
+```python
+from ultralytics import YOLO
+import cv2
+import numpy as np
+from pathlib import Path
+
+class YOLO11InferenceEngine:
+    """YOLO11 推理引擎 - 封装推理逻辑，提供易用接口"""
+    
+    def __init__(self, model_path="yolo11n.pt", device="cuda", conf=0.25, iou=0.45):
+        """
+        初始化 YOLO11 推理引擎
+        
+        Args:
+            model_path (str): 模型路径，支持 .pt, .onnx, .engine 等格式
+            device (str): 推理设备 ('cuda', 'cpu', 'mps')
+            conf (float): 置信度阈值，过滤低置信度检测
+            iou (float): NMS IOU 阈值，控制重叠框抑制
+        """
+        self.model = YOLO(model_path)
+        self.model.to(device)
+        self.conf = conf
+        self.iou = iou
+        self.device = device
+        
+        # 预热模型 - 首次推理较慢，预热后速度稳定
+        dummy_input = np.zeros((640, 640, 3), dtype=np.uint8)
+        _ = self.model.predict(dummy_input, verbose=False)
+    
+    def predict_single(self, image_path, **kwargs):
+        """
+        单张图像推理
+        
+        Args:
+            image_path (str): 图像路径
+            **kwargs: 额外的预测参数
+            
+        Returns:
+            Results: YOLO11 推理结果对象
+        """
+        # 设置默认参数
+        kwargs.setdefault('conf', self.conf)
+        kwargs.setdefault('iou', self.iou)
+        kwargs.setdefault('verbose', False)
+        
+        results = self.model.predict(image_path, **kwargs)
+        return results[0] if results else None
+    
+    def predict_batch(self, image_paths, batch_size=8, **kwargs):
+        """
+        批量图像推理 - 优化内存使用
+        
+        Args:
+            image_paths (list): 图像路径列表
+            batch_size (int): 批次大小，根据显存调整
+            **kwargs: 额外的预测参数
+            
+        Yields:
+            Results: 每张图像的推理结果
+        """
+        kwargs.setdefault('conf', self.conf)
+        kwargs.setdefault('iou', self.iou)
+        kwargs.setdefault('stream', True)  # 使用流式处理节省内存
+        kwargs.setdefault('verbose', False)
+        
+        results = self.model.predict(image_paths, **kwargs)
+        for result in results:
+            yield result
+    
+    def predict_video(self, video_path, output_path=None, show=False, **kwargs):
+        """
+        视频流推理 - 支持实时处理
+        
+        Args:
+            video_path (str): 视频文件路径或摄像头索引 (0, 1, ...)
+            output_path (str, optional): 输出视频路径
+            show (bool): 是否显示实时画面
+            **kwargs: 额外的预测参数
+            
+        Yields:
+            tuple: (frame, results) 每帧及其检测结果
+        """
+        cap = cv2.VideoCapture(video_path)
+        
+        # 视频写入器
+        video_writer = None
+        if output_path:
+            fps = int(cap.get(cv2.CAP_PROP_FPS))
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            video_writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        
+        kwargs.setdefault('conf', self.conf)
+        kwargs.setdefault('iou', self.iou)
+        kwargs.setdefault('verbose', False)
+        kwargs.setdefault('stream', True)
+        
+        try:
+            while cap.isOpened():
+                success, frame = cap.read()
+                if not success:
+                    break
+                
+                # 推理
+                results = self.model.predict(frame, **kwargs)
+                
+                # 可视化
+                annotated_frame = results[0].plot() if results else frame
+                
+                if show:
+                    cv2.imshow('YOLO11 Inference', annotated_frame)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+                
+                if video_writer:
+                    video_writer.write(annotated_frame)
+                
+                yield frame, results[0] if results else None
+                
+        finally:
+            cap.release()
+            if video_writer:
+                video_writer.release()
+            cv2.destroyAllWindows()
+
+# 使用示例
+if __name__ == "__main__":
+    # 初始化推理引擎
+    engine = YOLO11InferenceEngine(
+        model_path="yolo11n.pt",
+        device="cuda",
+        conf=0.35,
+        iou=0.5
+    )
+    
+    # 1. 单张图像推理
+    result = engine.predict_single("test.jpg")
+    if result:
+        print(f"检测到 {len(result.boxes)} 个对象")
+        result.save("output.jpg")
+    
+    # 2. 批量推理
+    image_list = ["img1.jpg", "img2.jpg", "img3.jpg"]
+    for result in engine.predict_batch(image_list, batch_size=4):
+        print(f"处理完成: {result.path}")
+    
+    # 3. 视频推理
+    for frame, result in engine.predict_video("video.mp4", output_path="output.mp4"):
+        if result and len(result.boxes) > 0:
+            print(f"帧检测到 {len(result.boxes)} 个对象")
+```
+
+### 性能调优参数详解
+
+YOLO11 提供丰富的推理参数，合理配置可显著提升性能：
+
+#### 核心推理参数表
+
+| 参数 | 类型 | 默认值 | 说明 | 推荐值 |
+|------|------|--------|------|--------|
+| **conf** | float | 0.25 | 置信度阈值，过滤低置信度检测 | 0.25-0.50 |
+| **iou** | float | 0.45 | NMS IOU 阈值，控制重叠框抑制 | 0.40-0.60 |
+| **imgsz** | int | 640 | 输入图像尺寸 | 640/1280/按需调整 |
+| **device** | str | None | 推理设备 (cuda/cpu/mps) | cuda (如有GPU) |
+| **half** | bool | False | 是否使用 FP16 半精度推理 | True (加速推理) |
+| **max_det** | int | 300 | 每张图像最大检测数 | 100-500 |
+| **vid_stride** | int | 1 | 视频帧采样步长 | 1-4 (加速视频处理) |
+| **stream** | bool | False | 是否使用流式处理 | True (大视频/批量) |
+| **visualize** | bool | False | 是否可视化特征图 | False (调试时设为True) |
+| **augment** | bool | False | 推理时是否使用数据增强 | False (精度优先) |
+| **agnostic_nms** | bool | False | 类别无关的 NMS | False (多类场景设为True) |
+| **classes** | list | None | 只检测指定类别 | [0, 1, 2] 等 |
+| **retina_masks** | bool | False | 高分辨率分割掩码 | True (分割任务) |
+
+#### 性能优化代码示例
+
+```python
+from ultralytics import YOLO
+
+# 高速推理模式（牺牲少量精度换取速度）
+model = YOLO("yolo11n.pt")
+
+# 场景1: 实时应用（监控、直播）
+results = model.predict(
+    source="rtsp://stream_url",
+    conf=0.3,          # 降低阈值提高召回率
+    imgsz=640,         # 使用较小尺寸
+    half=True,         # FP16 加速
+    device="cuda",     # GPU 加速
+    stream=True,       # 流式处理
+    vid_stride=2       # 跳帧处理，提升2倍速度
+)
+
+# 场景2: 高精度检测（医学图像、质检）
+results = model.predict(
+    source="high_res_image.jpg",
+    conf=0.5,          # 提高阈值减少误检
+    imgsz=1280,        # 使用大尺寸
+    augment=True,      # 启用增强提升精度
+    iou=0.5,           # 更严格的 NMS
+    max_det=100        # 限制检测数量
+)
+
+# 场景3: 特定类别检测（交通场景只检测车辆）
+results = model.predict(
+    source="traffic_video.mp4",
+    classes=[2, 3, 5, 7],  # COCO数据集中的车辆类别
+    conf=0.4,
+    agnostic_nms=True     # 类别无关NMS，避免车辆间相互抑制
+)
+
+# 场景4: 边缘设备优化（Jetson、树莓派）
+results = model.predict(
+    source="edge_camera",
+    imgsz=416,          # 降低输入尺寸
+    half=True,          # FP16 推理
+    device="cpu",       # 根据设备选择
+    max_det=50          # 减少输出数量
+)
+```
+
+### 实际应用场景
+
+#### 场景1: 智能安防系统
+
+```python
+import cv2
+from datetime import datetime
+from ultralytics import YOLO
+
+class SecurityMonitor:
+    """智能安防监控系统 - 支持人员入侵检测"""
+    
+    def __init__(self, source, output_dir="alerts"):
+        self.model = YOLO("yolo11n.pt")
+        self.source = source
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(exist_ok=True)
+        
+        # COCO 数据集中 person 类别索引为 0
+        self.target_classes = [0]  # 只检测人
+        self.alert_threshold = 3   # 检测到3人以上触发警报
+        
+    def monitor(self, show=False):
+        """持续监控并保存异常画面"""
+        cap = cv2.VideoCapture(self.source)
+        
+        while cap.isOpened():
+            success, frame = cap.read()
+            if not success:
+                break
+            
+            # 推理 - 只检测人
+            results = self.model.predict(
+                frame,
+                classes=self.target_classes,
+                conf=0.4,
+                verbose=False
+            )[0]
+            
+            # 检测人数
+            num_people = len(results.boxes) if results.boxes else 0
+            
+            # 绘制结果
+            annotated = results.plot()
+            
+            # 添加人数统计
+            cv2.putText(
+                annotated,
+                f"People: {num_people}",
+                (10, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1.5,
+                (0, 255, 0) if num_people < self.alert_threshold else (0, 0, 255),
+                3
+            )
+            
+            # 异常警报
+            if num_people >= self.alert_threshold:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                alert_path = self.output_dir / f"alert_{timestamp}.jpg"
+                cv2.imwrite(str(alert_path), annotated)
+                print(f"⚠️  警报: 检测到 {num_people} 人，已保存至 {alert_path}")
+            
+            if show:
+                cv2.imshow("Security Monitor", annotated)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+        
+        cap.release()
+        cv2.destroyAllWindows()
+
+# 使用示例
+monitor = SecurityMonitor(source=0)  # 使用摄像头
+monitor.monitor(show=True)
+```
+
+#### 场景2: 工业质检系统
+
+```python
+import cv2
+import numpy as np
+from ultralytics import YOLO
+
+class QualityInspection:
+    """工业质检系统 - 检测产品缺陷"""
+    
+    def __init__(self, model_path, defect_classes):
+        """
+        Args:
+            defect_classes (dict): 缺陷类别映射 {类别名: COCO索引}
+                例如: {"scratch": 0, "dent": 1, "crack": 2}
+        """
+        self.model = YOLO(model_path)
+        self.defect_classes = defect_classes
+        
+    def inspect_product(self, image_path, quality_threshold=0.9):
+        """
+        检测产品缺陷
+        
+        Args:
+            image_path: 产品图像路径
+            quality_threshold: 质量阈值，低于此值判定为不合格
+            
+        Returns:
+            dict: 检测结果 {
+                "pass": bool,           # 是否合格
+                "defects": list,        # 缺陷列表
+                "quality_score": float  # 质量分数
+            }
+        """
+        results = self.model.predict(
+            image_path,
+            conf=0.25,
+            iou=0.5,
+            verbose=False
+        )[0]
+        
+        defects = []
+        total_confidence = 0
+        
+        if results.boxes is not None:
+            for box in results.boxes:
+                cls_id = int(box.cls[0])
+                conf = float(box.conf[0])
+                
+                # 获取缺陷名称
+                defect_name = self._get_class_name(cls_id)
+                
+                # 获取边界框坐标
+                xyxy = box.xyxy[0].cpu().numpy()
+                
+                defects.append({
+                    "type": defect_name,
+                    "confidence": conf,
+                    "bbox": xyxy.tolist()
+                })
+                
+                total_confidence += conf
+        
+        # 计算质量分数（无缺陷则满分，有缺陷则按置信度降低）
+        num_defects = len(defects)
+        if num_defects == 0:
+            quality_score = 1.0
+        else:
+            quality_score = max(0, 1.0 - (total_confidence / num_defects))
+        
+        return {
+            "pass": quality_score >= quality_threshold,
+            "defects": defects,
+            "quality_score": quality_score,
+            "defect_count": num_defects
+        }
+    
+    def _get_class_name(self, cls_id):
+        """获取类别名称"""
+        for name, idx in self.defect_classes.items():
+            if idx == cls_id:
+                return name
+        return f"class_{cls_id}"
+
+# 使用示例
+inspector = QualityInspection(
+    model_path="yolo11n.pt",
+    defect_classes={
+        "scratch": 0,   # 划痕
+        "dent": 1,      # 凹陷
+        "crack": 2      # 裂纹
+    }
+)
+
+result = inspector.inspect_product("product_001.jpg")
+if result["pass"]:
+    print(f"✅ 产品合格 (质量分数: {result['quality_score']:.2f})")
+else:
+    print(f"❌ 产品不合格")
+    print(f"   缺陷数量: {result['defect_count']}")
+    for defect in result["defects"]:
+        print(f"   - {defect['type']}: {defect['confidence']:.2f}")
+```
+
+#### 场景3: 实时交通流量统计
+
+```python
+import cv2
+from collections import defaultdict
+from ultralytics import YOLO
+
+class TrafficCounter:
+    """交通流量统计 - 统计车辆和行人数量"""
+    
+    # COCO 数据集类别
+    # 2: car, 3: motorcycle, 5: bus, 7: truck, 0: person
+    VEHICLE_CLASSES = {
+        "car": 2,
+        "motorcycle": 3,
+        "bus": 5,
+        "truck": 7,
+        "person": 0
+    }
+    
+    def __init__(self, source, roi_points=None):
+        """
+        Args:
+            source: 视频源（文件路径或摄像头索引）
+            roi_points: 感兴趣区域点列表 [(x1,y1), (x2,y2), ...]
+        """
+        self.model = YOLO("yolo11n.pt")
+        self.source = source
+        self.roi_points = roi_points
+        
+        # 统计数据
+        self.counts = defaultdict(int)
+        
+    def count_traffic(self, duration_seconds=60):
+        """统计指定时长的交通流量"""
+        cap = cv2.VideoCapture(self.source)
+        fps = int(cap.get(cv2.CAP_PROP_FPS))
+        total_frames = fps * duration_seconds
+        
+        frame_count = 0
+        
+        while cap.isOpened() and frame_count < total_frames:
+            success, frame = cap.read()
+            if not success:
+                break
+            
+            # 推理
+            results = self.model.predict(
+                frame,
+                classes=list(self.VEHICLE_CLASSES.values()),
+                conf=0.4,
+                verbose=False
+            )[0]
+            
+            # 统计
+            if results.boxes is not None:
+                for box in results.boxes:
+                    cls_id = int(box.cls[0])
+                    class_name = self._get_class_name(cls_id)
+                    self.counts[class_name] += 1
+            
+            frame_count += 1
+            
+            # 可视化
+            annotated = results.plot()
+            self._draw_stats(annotated)
+            cv2.imshow("Traffic Counter", annotated)
+            
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        
+        cap.release()
+        cv2.destroyAllWindows()
+        
+        return dict(self.counts)
+    
+    def _get_class_name(self, cls_id):
+        """获取类别名称"""
+        for name, idx in self.VEHICLE_CLASSES.items():
+            if idx == cls_id:
+                return name
+        return "unknown"
+    
+    def _draw_stats(self, frame):
+        """在画面上绘制统计信息"""
+        y_offset = 50
+        for vehicle_type, count in self.counts.items():
+            text = f"{vehicle_type}: {count}"
+            cv2.putText(
+                frame,
+                text,
+                (10, y_offset),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (0, 255, 0),
+                2
+            )
+            y_offset += 30
+
+# 使用示例
+counter = TrafficCounter(source="traffic_video.mp4")
+counts = counter.count_traffic(duration_seconds=30)
+print("\n📊 交通流量统计:")
+for vehicle_type, count in counts.items():
+    print(f"  {vehicle_type}: {count}")
+```
+
+### 多线程与批量推理
+
+#### 多线程推理实现
+
+```python
+import threading
+import queue
+from ultralytics import YOLO
+from pathlib import Path
+
+class MultiThreadInference:
+    """多线程 YOLO11 推理 - 适用于多摄像头场景"""
+    
+    def __init__(self, model_path, num_workers=4):
+        self.model_path = model_path
+        self.num_workers = num_workers
+        self.task_queue = queue.Queue()
+        self.result_queue = queue.Queue()
+        self.workers = []
+        
+    def _worker(self):
+        """工作线程 - 每个线程加载独立模型"""
+        # 每个线程创建独立的模型实例（避免线程冲突）
+        model = YOLO(self.model_path)
+        
+        while True:
+            task = self.task_queue.get()
+            if task is None:  # 毒丸，退出信号
+                break
+            
+            image_path, task_id = task
+            results = model.predict(image_path, verbose=False)
+            self.result_queue.put((task_id, results))
+            
+    def start_workers(self):
+        """启动工作线程"""
+        for _ in range(self.num_workers):
+            worker = threading.Thread(target=self._worker)
+            worker.start()
+            self.workers.append(worker)
+    
+    def stop_workers(self):
+        """停止工作线程"""
+        for _ in range(self.num_workers):
+            self.task_queue.put(None)
+        for worker in self.workers:
+            worker.join()
+    
+    def process_images(self, image_paths):
+        """批量处理图像"""
+        # 启动工作线程
+        self.start_workers()
+        
+        # 提交任务
+        for idx, img_path in enumerate(image_paths):
+            self.task_queue.put((img_path, idx))
+        
+        # 收集结果
+        results = [None] * len(image_paths)
+        for _ in range(len(image_paths)):
+            task_id, result = self.result_queue.get()
+            results[task_id] = result
+        
+        # 停止工作线程
+        self.stop_workers()
+        
+        return results
+
+# 使用示例
+inference = MultiThreadInference("yolo11n.pt", num_workers=4)
+
+# 准备图像列表
+image_paths = list(Path("images").glob("*.jpg"))
+
+# 批量处理
+results = inference.process_images(image_paths)
+
+for img_path, result in zip(image_paths, results):
+    print(f"{img_path.name}: 检测到 {len(result[0].boxes)} 个对象")
+```
+
+### 结果处理最佳实践
+
+```python
+from ultralytics import YOLO
+import pandas as pd
+import json
+
+class ResultProcessor:
+    """YOLO11 结果处理器 - 提供多种输出格式"""
+    
+    def __init__(self, model_path):
+        self.model = YOLO(model_path)
+    
+    def predict_and_export(self, source, output_dir="outputs"):
+        """推理并导出多种格式结果"""
+        output_path = Path(output_dir)
+        output_path.mkdir(exist_ok=True)
+        
+        results = self.model.predict(source, verbose=False)
+        
+        for idx, result in enumerate(results):
+            base_name = Path(result.path).stem
+            
+            # 1. 保存可视化图像
+            result.save(str(output_path / f"{base_name}_annotated.jpg"))
+            
+            # 2. 导出为 JSON
+            json_data = self._to_json(result)
+            with open(output_path / f"{base_name}_result.json", "w") as f:
+                json.dump(json_data, f, indent=2)
+            
+            # 3. 导出为 CSV
+            if result.boxes is not None:
+                df = self._to_dataframe(result)
+                df.to_csv(output_path / f"{base_name}_result.csv", index=False)
+    
+    def _to_json(self, result):
+        """转换为 JSON 格式"""
+        data = {
+            "image": result.path,
+            "image_shape": result.orig_shape,
+            "detections": []
+        }
+        
+        if result.boxes is not None:
+            for box in result.boxes:
+                detection = {
+                    "class_id": int(box.cls[0]),
+                    "class_name": result.names[int(box.cls[0])],
+                    "confidence": float(box.conf[0]),
+                    "bbox_xyxy": box.xyxy[0].tolist(),
+                    "bbox_xywh": box.xywh[0].tolist()
+                }
+                data["detections"].append(detection)
+        
+        return data
+    
+    def _to_dataframe(self, result):
+        """转换为 Pandas DataFrame"""
+        detections = []
+        
+        if result.boxes is not None:
+            for box in result.boxes:
+                detections.append({
+                    "class_id": int(box.cls[0]),
+                    "class_name": result.names[int(box.cls[0])],
+                    "confidence": float(box.conf[0]),
+                    "x1": float(box.xyxy[0][0]),
+                    "y1": float(box.xyxy[0][1]),
+                    "x2": float(box.xyxy[0][2]),
+                    "y2": float(box.xyxy[0][3])
+                })
+        
+        return pd.DataFrame(detections)
+
+# 使用示例
+processor = ResultProcessor("yolo11n.pt")
+processor.predict_and_export("test_images/")
+```
+
+---
+
+## 📚 YOLO11 推理常见问题解答
+
+### Q1: YOLO11 与 YOLOv8 在推理上有何区别？
+
+**答:** YOLO11 相比 YOLOv8 在推理方面有以下改进：
+
+1. **更快的推理速度**：优化了模型架构，推理速度提升约 20-30%
+2. **更低的内存占用**：改进了内存管理，支持更大批次
+3. **更好的精度**：在相同速度下，mAP 提升 2-5%
+4. **增强的量化支持**：FP16/INT8 推理性能更优
+
+### Q2: 如何选择合适的模型大小？
+
+**答:** 根据应用场景选择：
+
+| 模型 | 参数量 | 适用场景 |
+|------|--------|----------|
+| yolo11n | 2.6M | 边缘设备、移动端、实时应用 |
+| yolo11s | 9.4M | 一般服务器、桌面应用 |
+| yolo11m | 20.1M | 高性能服务器、精度要求高 |
+| yolo11l | 25.3M | 精度优先、服务器部署 |
+| yolo11x | 56.9M | 最高精度、云端部署 |
+
+### Q3: 如何优化视频推理速度？
+
+**答:** 多种优化策略：
+
+1. **使用流式处理**：`stream=True` 避免内存堆积
+2. **调整采样率**：`vid_stride=2` 跳帧处理
+3. **降低分辨率**：`imgsz=416` 减少计算量
+4. **使用半精度**：`half=True` FP16 加速
+5. **GPU 加速**：`device="cuda"` 利用 GPU
+
+### Q4: 推理时显存不足怎么办？
+
+**答:** 解决方案：
+
+1. **减小批次大小**：`batch=1` 或更小
+2. **降低输入尺寸**：`imgsz=416` 或更小
+3. **使用半精度**：`half=True` 减少显存占用
+4. **使用流式处理**：`stream=True` 逐帧处理
+5. **使用更小模型**：yolo11n 代替 yolo11x
+
+### Q5: 如何提升检测精度？
+
+**答:** 提升精度的方法：
+
+1. **提高置信度阈值**：`conf=0.5` 减少误检
+2. **增大输入尺寸**：`imgsz=1280` 捕获更多细节
+3. **启用数据增强**：`augment=True` 提升鲁棒性
+4. **调整 IOU 阈值**：`iou=0.6` 更严格的 NMS
+5. **使用更大模型**：yolo11x 精度最高
+
+---
+
+## 🎯 YOLO11 推理最佳实践总结
+
+1. **模型选择**：根据硬件和精度要求选择合适的模型大小
+2. **参数调优**：合理设置 conf、iou、imgsz 等关键参数
+3. **内存管理**：大视频或批量图像使用 stream=True
+4. **硬件加速**：优先使用 GPU，启用 half=True
+5. **结果处理**：使用 Results 对象的方法提取所需信息
+6. **性能监控**：使用 benchmark() 对比不同配置性能
+
+---
+
+*本优化指南基于 YOLO11 最新版本编写，涵盖实际项目中最常见的推理场景和优化策略。*
+
+
 ## Reference for ultralytics/utils/loss.py - Ultralytics YOLO Docs
 
 **URL:** https://docs.ultralytics.com/zh/reference/utils/loss/

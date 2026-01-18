@@ -1,212 +1,210 @@
 ---
-title: MentionSender
+title: 提及发送器组件
 ---
 
-## Introduction
+## 简介
 
-`MentionSender` is an input box component for chat scenarios.
+`MentionSender` 是用于聊天场景的输入框组件。
 
 ::: warning
-Its functionality is basically the same as the `Sender` component. The only difference is the **properties and methods related to the directive popover**. Click here to quickly understand the difference 👉 [**Directive Difference**](https://element-plus-x.com/components/mentionSender/#packages-vue-element-plus-x-src-mentionSender-demos-options)
-:::
+其功能与 `Sender` 组件基本相同。唯一的区别是**与指令弹窗相关的属性和方法**。点击此处快速了解差异 👉 [**指令差异**](https://element-plus-x.com/components/mentionSender/#packages-vue-element-plus-x-src-mentionSender-demos-options)
 
-Currently, we do not plan to combine the **directive features** of `MentionSender` and `Sender` into one, and we distinguish them only by component.
+目前，我们不计划将 `MentionSender` 和 `Sender` 的**指令功能**合并为一个，仅通过组件来区分。
 
-## Code Examples
+## 代码示例
 
-### Basic Usage
+### 基础用法
 
 <demo src="./demos/basic.vue"></demo>
 
-### Placeholder
+### 占位符
 
 <demo src="./demos/placeholder.vue"></demo>
 
-### Two-way Binding (Unbound, value will not change)
+### 双向绑定（未绑定，value 不会改变）
 
 <demo src="./demos/v-model.vue"></demo>
 
-### Submit Button Disabled State
+### 提交按钮禁用状态
 
 <demo src="./demos/submit-btn-disabled.vue"></demo>
 
-### Custom Max and Min Rows
+### 自定义最大和最小行数
 
 <demo src="./demos/autosize.vue"></demo>
 
-### Various States of the Input Component
+### 输入组件的各种状态
 
 <demo src="./demos/state.vue"></demo>
 
-### Submission Methods
+### 提交方式
 
 <demo src="./demos/submit-type.vue"></demo>
 
-### Paste Files
+### 粘贴文件
 
 <demo src="./demos/pasteFile.vue"></demo>
 
-### Speech Recognition
+### 语音识别
 
 ::: warning
-Built-in browser speech recognition API. You can use the [`useRecord`](https://element-plus-x.com/components/useRecord/) **hook** for easier integration and control of built-in speech recognition.
-:::
+内置浏览器语音识别 API。您可以使用 [`useRecord`](https://element-plus-x.com/components/useRecord/) **hook** 更方便地集成和控制内置语音识别。
 
 <demo src="./demos/allow-speech.vue"></demo>
 
-### Variant - Vertical Style
+### 变体 - 垂直样式
 
 <demo src="./demos/variant.vue"></demo>
 
-### Custom Action List
+### 自定义操作列表
 
 <demo src="./demos/action-list.vue"></demo>
 
-### Custom Prefix
+### 自定义前缀
 
 <demo src="./demos/prefix.vue"></demo>
 
-### Custom Header
+### 自定义头部
 
 <demo src="./demos/header.vue"></demo>
 
-### Custom Footer
+### 自定义底部
 
 <demo src="./demos/footer.vue"></demo>
 
-### Custom Input Box Style
+### 自定义输入框样式
 
 <demo src="./demos/input-style.vue"></demo>
 
-### Input Focus Control
+### 输入焦点控制
 
 <demo src="./demos/focus.vue"></demo>
 
-## Mention Directive Usage (Difference from Sender Component)
+## 提及指令用法（与 Sender 组件的区别）
 
 ::: warning
-Below are the **properties and methods** related to directives that are **different** from the `Sender` component. Please pay attention to the **usage differences**.
+以下是**与 Sender 组件不同的**关于指令的**属性和方法**。请注意**使用差异**。
 
-**💌 If you need to trigger a mention directive list in the middle of a content, you can use this component.**
+**💌 如果您需要在内容中间触发提及指令列表，可以使用此组件。**
 
-This warm tip was last updated: `2025-04-16`
+此温馨提示最后更新时间：`2025-04-16`
 :::
 
-### Custom Trigger Directive Array
+### 自定义触发指令数组
 
 <demo src="./demos/options.vue"></demo>
 
-### Custom Trigger Directive String
+### 自定义触发指令字符串
 
 <demo src="./demos/trigger-strings.vue"></demo>
 
-### Custom Trigger Directive Separator
+### 自定义触发指令分隔符
 
 <demo src="./demos/trigger-split.vue"></demo>
 
-### Trigger Directive Loading
+### 触发指令加载
 
 <demo src="./demos/trigger-loading.vue"></demo>
 
-### Custom Trigger Directive Filter
+### 自定义触发指令过滤器
 
 <demo src="./demos/filter-option.vue"></demo>
 
-### Whole Deletion
+### 整体删除
 
 <demo src="./demos/whole.vue"></demo>
 
-### Trigger Directive Popover Placement
+### 触发指令弹窗位置
 
 <demo src="./demos/trigger-popover-placement.vue"></demo>
 
-### Trigger Directive Popover Offset
+### 触发指令弹窗偏移
 
 <demo src="./demos/trigger-popover-offset.vue"></demo>
 
-### Popover Slots
+### 弹窗插槽
 
 <demo src="./demos/solts.vue"></demo>
 
-### Search Event
+### 搜索事件
 
 <demo src="./demos/search.vue"></demo>
 
-### Select Event
+### 选择事件
 
 <demo src="./demos/select.vue"></demo>
 
-## Props
+## 属性
 
-| Name                      | Type                 | Required | Default                    | Description                                                                                                                                                                                                                                            |
-| ------------------------- | -------------------- | -------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `v-model`                 | String               | No       | ''                         | Bound value of the input box, use `v-model` for two-way binding.                                                                                                                                                                                       |
-| `placeholder`             | String               | No       | ''                         | Placeholder text for the input box.                                                                                                                                                                                                                    |
-| `auto-size`               | Object               | No       | \{ minRows:1, maxRows:6 \} | Set the minimum and maximum number of visible rows for the input box.                                                                                                                                                                                  |
-| `read-only`               | Boolean              | No       | false                      | Whether the input box is read-only.                                                                                                                                                                                                                    |
-| `disabled`                | Boolean              | No       | false                      | Whether the input box is disabled.                                                                                                                                                                                                                     |
-| `submitBtnDisabled`       | Boolean \| undefined | No       | undefined                  | Disable the built-in send button. (Note the usage scenario)                                                                                                                                                                                            |
-| `loading`                 | Boolean              | No       | false                      | Whether to show the loading state. When `true`, the input box will display a loading animation.                                                                                                                                                        |
-| `clearable`               | Boolean              | No       | false                      | Whether the input box can be cleared. Shows the default clear button.                                                                                                                                                                                  |
-| `allowSpeech`             | Boolean              | No       | false                      | Whether to allow voice input. Shows the built-in speech recognition button by default, using the browser's built-in speech recognition API.                                                                                                            |
-| `submitType`              | String               | No       | 'enter'                    | Submission method. Supports `'shiftEnter'` (submit with `Shift + Enter`), `'cmdOrCtrlEnter'` (submit with `Command + Enter` or `Ctrl + Enter`), `'altEnter'` (submit with `Alt + Enter`).                                                              |
-| `headerAnimationTimer`    | Number               | No       | 300                        | Custom header display duration in ms.                                                                                                                                                                                                                  |
-| `inputWidth`              | String               | No       | '100%'                     | Width of the input box.                                                                                                                                                                                                                                |
-| `variant`                 | String               | No       | 'default'                  | Variant type of the input box. Supports `'default'`, `'updown'`.                                                                                                                                                                                       |
-| `showUpdown`              | Boolean              | No       | true                       | Whether to show the built-in style when the variant is `updown`.                                                                                                                                                                                       |
-| `inputStyle`              | Object               | No       | \{}                        | Style of the input box.                                                                                                                                                                                                                                |
-| `triggerStrings`          | string[]             | No       | []                         | String array for trigger directives.                                                                                                                                                                                                                   |
-| `triggerPopoverVisible`   | Boolean              | No       | false                      | Whether the popover for the trigger directive is visible. Control with `v-model:triggerPopoverVisible`.                                                                                                                                                |
-| `triggerPopoverWidth`     | String               | No       | 'fit-content'              | Width of the popover for the trigger directive. Supports percentage and other CSS units.                                                                                                                                                               |
-| `triggerPopoverLeft`      | String               | No       | '0px'                      | Left margin of the popover for the trigger directive. Supports percentage and other CSS units.                                                                                                                                                         |
-| `triggerPopoverOffset`    | Number               | No       | 8                          | Offset of the popover for the trigger directive. Must be a number, unit is px.                                                                                                                                                                         |
-| `triggerPopoverPlacement` | String               | No       | 'top-start'                | Placement of the popover for the trigger directive. Values: `'top'` \| `'top-start'` \| `'top-end'` \| `'bottom'` \| `'bottom-start'` \| `'bottom-end'` \| `'left'` \| `'left-start'` \| `'left-end'` \| `'right'` \| `'right-start'` \| `'right-end'` |
+| 属性名                    | 类型                 | 是否必填 | 默认值                        | 说明                                                                                                                                                                                                                                                  |
+| ------------------------- | -------------------- | -------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `v-model`                 | String               | 否       | ''                             | 输入框的绑定值，使用 `v-model` 进行双向绑定                                                                                                                                                                                                          |
+| `placeholder`             | String               | 否       | ''                             | 输入框的占位符文本                                                                                                                                                                                                                                    |
+| `auto-size`               | Object               | 否       | \{ minRows:1, maxRows:6 \}     | 设置输入框的最小和最大可见行数                                                                                                                                                                                                                        |
+| `read-only`               | Boolean              | 否       | false                          | 输入框是否只读                                                                                                                                                                                                                                        |
+| `disabled`                | Boolean              | 否       | false                          | 输入框是否禁用                                                                                                                                                                                                                                        |
+| `submitBtnDisabled`       | Boolean \| undefined | 否       | undefined                      | 禁用内置发送按钮（注意使用场景）                                                                                                                                                                                                                      |
+| `loading`                 | Boolean              | 否       | false                          | 是否显示加载状态，当为 `true` 时，输入框将显示加载动画                                                                                                                                                                                                |
+| `clearable`               | Boolean              | 否       | false                          | 输入框是否可清空，显示默认清空按钮                                                                                                                                                                                                                    |
+| `allowSpeech`             | Boolean              | 否       | false                          | 是否允许语音输入，默认显示内置语音识别按钮，使用浏览器内置语音识别 API                                                                                                                                                                                 |
+| `submitType`              | String               | 否       | 'enter'                        | 提交方式。支持 `'shiftEnter'`（`Shift + Enter` 提交）、`'cmdOrCtrlEnter'`（`Command + Enter` 或 `Ctrl + Enter` 提交）、`'altEnter'`（`Alt + Enter` 提交）                                                                                                  |
+| `headerAnimationTimer`    | Number               | 否       | 300                            | 自定义头部显示持续时间，单位毫秒                                                                                                                                                                                                                      |
+| `inputWidth`              | String               | 否       | '100%'                         | 输入框宽度                                                                                                                                                                                                                                            |
+| `variant`                 | String               | 否       | 'default'                      | 输入框变体类型，支持 `'default'`、`'updown'`                                                                                                                                                                                                         |
+| `showUpdown`              | Boolean              | 否       | true                           | 变体为 `updown` 时是否显示内置样式                                                                                                                                                                                                                   |
+| `inputStyle`              | Object               | 否       | \{}                            | 输入框样式                                                                                                                                                                                                                                           |
+| `triggerStrings`          | string[]             | 否       | []                             | 触发指令的字符串数组                                                                                                                                                                                                                                  |
+| `triggerPopoverVisible`   | Boolean              | 否       | false                          | 触发指令的弹窗是否可见，使用 `v-model:triggerPopoverVisible` 控制                                                                                                                                                                                     |
+| `triggerPopoverWidth`     | String               | 否       | 'fit-content'                  | 触发指令弹窗的宽度，支持百分比和其他 CSS 单位                                                                                                                                                                                                         |
+| `triggerPopoverLeft`      | String               | 否       | '0px'                          | 触发指令弹窗的左边距，支持百分比和其他 CSS 单位                                                                                                                                                                                                       |
+| `triggerPopoverOffset`    | Number               | 否       | 8                              | 触发指令弹窗的偏移量，必须是数字，单位为 px                                                                                                                                                                                                          |
+| `triggerPopoverPlacement` | String               | 否       | 'top-start'                    | 触发指令弹窗的位置，可选值：`'top'` \| `'top-start'` \| `'top-end'` \| `'bottom'` \| `'bottom-start'` \| `'bottom-end'` \| `'left'` \| `'left-start'` \| `'left-end'` \| `'right'` \| `'right-start'` \| `'right-end'` |
 
-## Events
+## 事件
 
-| Event Name        | Description                                                   | Callback Parameter                                              |
-| ----------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
-| `submit`          | Triggered when the built-in submit button is clicked.         | None                                                            |
-| `cancel`          | Triggered when the built-in loading button is clicked.        | None                                                            |
-| `recordingChange` | Triggered when the built-in speech recognition state changes. | None                                                            |
-| `select`          | Triggered when the trigger field is pressed.                  | `option: MentionOption`                                         |
-| `search`          | Triggered when the user selects an option.                    | `searchValue: string, prefix: string`                           |
-| `pasteFile`       | Triggered when paste files                                    | `interface PasteFileEvent{firstFile: File; fileList: FileList}` |
+| 事件名           | 说明                                                   | 回调参数                                                         |
+| ---------------- | ------------------------------------------------------ | ---------------------------------------------------------------- |
+| `submit`         | 内置提交按钮点击时触发                                   | 无                                                               |
+| `cancel`         | 内置加载按钮点击时触发                                   | 无                                                               |
+| `recordingChange` | 内置语音识别状态变化时触发                              | 无                                                               |
+| `select`         | 触发字段按下时触发                                      | `option: MentionOption`                                          |
+| `search`         | 用户选择选项时触发                                      | `searchValue: string, prefix: string`                             |
+| `pasteFile`      | 粘贴文件时触发                                          | `interface PasteFileEvent{firstFile: File; fileList: FileList}`  |
 
-## Ref Instance Methods
+## Ref 实例方法
 
-| Name               | Type     | Description                                                                                                                                 |
-| ------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `openHeader`       | Function | Open the custom header of the input box.                                                                                                    |
-| `closeHeader`      | Function | Close the custom header of the input box.                                                                                                   |
-| `clear`            | Function | Clear the content of the input box.                                                                                                         |
-| `blur`             | Function | Remove focus from the input box.                                                                                                            |
-| `focus`            | Function | Focus the input box. By default, `focus('all')` selects all text, `focus('start')` focuses at the start, `focus('end')` focuses at the end. |
-| `submit`           | Function | Submit the input content.                                                                                                                   |
-| `cancel`           | Function | Cancel the loading state.                                                                                                                   |
-| `startRecognition` | Function | Start speech recognition.                                                                                                                   |
-| `stopRecognition`  | Function | Stop speech recognition.                                                                                                                    |
-| `popoverVisible`   | Boolean  | Popover visibility for the trigger directive.                                                                                               |
-| `inputInstance`    | Object   | Input box instance.                                                                                                                         |
+| 方法名            | 类型     | 说明                                                                                                                                                                                        |
+| ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `openHeader`      | Function | 打开输入框的自定义头部                                                                                                                                                                       |
+| `closeHeader`     | Function | 关闭输入框的自定义头部                                                                                                                                                                       |
+| `clear`           | Function | 清空输入框的内容                                                                                                                                                                             |
+| `blur`            | Function | 移除输入框的焦点                                                                                                                                                                             |
+| `focus`           | Function | 聚焦输入框，默认 `focus('all')` 选中所有文本，`focus('start')` 聚焦到开头，`focus('end')` 聚焦到结尾                                                                                             |
+| `submit`          | Function | 提交输入内容                                                                                                                                                                                 |
+| `cancel`          | Function | 取消加载状态                                                                                                                                                                                 |
+| `startRecognition` | Function | 开始语音识别                                                                                                                                                                                 |
+| `stopRecognition`  | Function | 停止语音识别                                                                                                                                                                                 |
+| `popoverVisible`   | Boolean  | 触发指令弹窗的可见性                                                                                                                                                                          |
+| `inputInstance`    | Object   | 输入框实例                                                                                                                                                                                   |
 
-## Slots
+## 插槽
 
-| Slot Name          | Parameter                        | Type | Description                                |
-| ------------------ | -------------------------------- | ---- | ------------------------------------------ |
-| `#header`          | -                                | Slot | For customizing the header content.        |
-| `#prefix`          | -                                | Slot | For customizing the prefix content.        |
-| `#action-list`     | -                                | Slot | For customizing the action list.           |
-| `#footer`          | -                                | Slot | For customizing the footer content.        |
-| `#trigger-label`   | `#trigger-label={ item, index }` | Slot | For customizing the popover label.         |
-| `#trigger-loading` | -                                | Slot | For customizing the popover loading state. |
-| `#trigger-header`  | -                                | Slot | For customizing the popover header.        |
-| `#trigger-footer`  | -                                | Slot | For customizing the popover footer.        |
+| 插槽名            | 参数                          | 类型 | 说明                       |
+| ----------------- | ----------------------------- | ---- | -------------------------- |
+| `#header`         | -                             | Slot | 用于自定义头部内容         |
+| `#prefix`         | -                             | Slot | 用于自定义前缀内容         |
+| `#action-list`    | -                             | Slot | 用于自定义操作列表         |
+| `#footer`         | -                             | Slot | 用于自定义底部内容         |
+| `#trigger-label`  | `#trigger-label={ item, index }` | Slot | 用于自定义弹窗标签         |
+| `#trigger-loading` | -                             | Slot | 用于自定义弹窗加载状态     |
+| `#trigger-header` | -                             | Slot | 用于自定义弹窗头部         |
+| `#trigger-footer` | -                             | Slot | 用于自定义弹窗底部         |
 
-## Features
+## 特性
 
-1. **Focus Control**: Supports setting focus to the start, end, or selecting all text, and can also remove focus.
-2. **Custom Content**: Provides slots for header, prefix, and action list, allowing users to customize these parts.
-3. **Submission Function**: Supports submitting input with `Shift + Enter`, and allows custom actions after submission.
-4. **Loading State**: Can display a loading state to simulate the submission process.
-5. **Voice Input**: Supports voice input for more convenient input.
-6. **Clear Function**: The input box can be cleared for easy re-entry.
+1. **焦点控制**：支持将焦点设置到开头、结尾或选中所有文本，也可以移除焦点
+2. **自定义内容**：提供头部、前缀和操作列表的插槽，允许用户自定义这些部分
+3. **提交功能**：支持使用 `Shift + Enter` 提交输入，并允许提交后执行自定义操作
+4. **加载状态**：可以显示加载状态以模拟提交过程
+5. **语音输入**：支持语音输入，更加便捷地输入内容
+6. **清空功能**：可以清空输入框，方便重新输入
